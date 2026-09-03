@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
 export type AspectRatio = '9:16' | '16:9';
@@ -203,11 +204,12 @@ interface ProjectActions {
 }
 
 export const useProjectStore = create<ProjectState & ProjectActions>()(
-  immer((set, get) => ({
-    ...initialState,
-    
-    // Catalog Actions
-    addMediaFiles: async (files: File[]) => {
+  persist(
+    immer((set, get) => ({
+      ...initialState,
+      
+      // Catalog Actions
+      addMediaFiles: async (files: File[]) => {
       set(state => { state.isLoading = true; });
       
       const newFiles: MediaFile[] = [];
@@ -616,7 +618,38 @@ export const useProjectStore = create<ProjectState & ProjectActions>()(
         state.validationErrors = [];
       });
     },
-  }))
+  })),
+  {
+    name: 'vignette-storage',
+    storage: createJSONStorage(() => localStorage),
+    partialize: (state) => ({
+      mediaFiles: state.mediaFiles.map(f => ({
+        id: f.id,
+        name: f.name,
+        type: f.type,
+        proxyUrl: f.proxyUrl,
+        originalUrl: f.originalUrl,
+        width: f.width,
+        height: f.height,
+        duration: f.duration,
+        description: f.description,
+        hookScore: f.hookScore,
+      })),
+      groups: state.groups,
+      projectName: state.projectName,
+      projectHistory: state.projectHistory,
+      executionMode: state.executionMode,
+      aspectRatio: state.aspectRatio,
+      visualStylePreset: state.visualStylePreset,
+    }),
+    onRehydrateStorage: () => (state, error) => {
+      if (error) {
+        console.error('Failed to rehydrate vignette-storage:', error);
+      } else {
+        console.log('Vignette state rehydrated successfully');
+      }
+    },
+  })
 );
 
 // Helper functions

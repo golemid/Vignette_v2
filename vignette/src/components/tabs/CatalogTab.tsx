@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { useProjectStore } from '../../store/useStore';
-import { Upload, X, Image as ImageIcon, Trash2, Grid3X3 } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, Trash2, Grid3X3, Database } from 'lucide-react';
+import { injectMockData } from '../../utils/mockData';
 import './CatalogTab.css';
 
 export const CatalogTab: React.FC = () => {
@@ -54,6 +55,10 @@ export const CatalogTab: React.FC = () => {
     }
   };
   
+  const handleLoadMockData = () => {
+    injectMockData();
+  };
+  
   const images = mediaFiles.filter(f => f.type === 'image');
   const audios = mediaFiles.filter(f => f.type === 'audio');
   
@@ -62,6 +67,32 @@ export const CatalogTab: React.FC = () => {
       <div className="tab-header">
         <h1>Catalog</h1>
         <p className="tab-description">Import and prepare raw media assets for your project</p>
+      </div>
+      
+      {/* Debug: Load Mock Data Button */}
+      <div className="debug-controls" style={{ marginBottom: '1rem', padding: '0.5rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '4px', border: '1px dashed rgba(59, 130, 246, 0.3)' }}>
+        <button
+          onClick={handleLoadMockData}
+          disabled={isLoading}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.5rem 1rem',
+            background: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: isLoading ? 'not-allowed' : 'pointer',
+            opacity: isLoading ? 0.7 : 1,
+          }}
+        >
+          <Database size={16} />
+          Load Mock Data (Debug)
+        </button>
+        <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', opacity: 0.8 }}>
+          Injects 12 test images and 3 groups for UI testing
+        </span>
       </div>
       
       {/* Aspect Ratio Toggle */}

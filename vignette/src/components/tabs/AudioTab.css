@@ -31,7 +31,7 @@
 .narration-editor {
   width: 100%;
   padding: 16px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--border);
   border-radius: 8px;
   font-size: 1rem;
   line-height: 1.6;
@@ -48,14 +48,14 @@
 .narration-hints {
   margin-top: 12px;
   padding: 12px;
-  background: #f8f9fa;
+  background: var(--bg-secondary);
   border-radius: 6px;
   font-size: 0.875rem;
-  color: #666;
+  color: var(--text);
 }
 
 .narration-hints code {
-  background: #e0e0e0;
+  background: var(--border);
   padding: 2px 6px;
   border-radius: 4px;
   font-family: monospace;
@@ -70,8 +70,8 @@
 }
 
 .voice-card {
-  background: #f8f9fa;
-  border: 2px solid #e0e0e0;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
   border-radius: 12px;
   padding: 20px;
   text-align: center;
@@ -113,7 +113,7 @@
   justify-content: center;
   gap: 12px;
   font-size: 0.875rem;
-  color: #666;
+  color: var(--text);
 }
 
 .selected-badge {
@@ -140,7 +140,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  background: #f8f9fa;
+  background: var(--bg-secondary);
   border-radius: 8px;
 }
 
@@ -160,7 +160,7 @@
 
 .track-controls label {
   font-size: 0.875rem;
-  color: #666;
+  color: var(--text);
 }
 
 .track-controls input[type="range"] {
@@ -194,7 +194,7 @@
 /* Ducking Control */
 .ducking-control {
   padding: 16px;
-  background: #f8f9fa;
+  background: var(--bg-secondary);
   border-radius: 8px;
 }
 
@@ -219,12 +219,12 @@
   gap: 16px;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border);
 }
 
 .ducking-depth label {
   font-weight: 600;
-  color: #666;
+  color: var(--text);
 }
 
 .ducking-depth input[type="range"] {
@@ -235,7 +235,7 @@
 .ducking-hint {
   margin-top: 12px;
   font-size: 0.875rem;
-  color: #666;
+  color: var(--text);
 }
 
 /* Waveform Container */
@@ -282,7 +282,7 @@
 .empty-state.small {
   text-align: center;
   padding: 40px 20px;
-  background: #f8f9fa;
+  background: var(--bg-secondary);
   border-radius: 8px;
 }
 
@@ -292,7 +292,7 @@
 }
 
 .empty-state p {
-  color: #666;
+  color: var(--text);
   margin-bottom: 16px;
 }
 
@@ -316,7 +316,7 @@
   gap: 12px;
   margin-top: 32px;
   padding-top: 24px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border);
 }
 
 .proceed-btn {
@@ -383,7 +383,7 @@
 }
 
 .action-btn.icon:hover {
-  background: #e0e0e0;
+  background: var(--border);
 }
 
 .action-btn:disabled {
