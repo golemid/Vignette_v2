@@ -11,12 +11,12 @@
 .tab-header h1 {
   font-size: 2rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--text-h);
   margin-bottom: 8px;
 }
 
 .tab-description {
-  color: #666;
+  color: var(--text);
   font-size: 1rem;
 }
 
@@ -27,7 +27,7 @@
   gap: 16px;
   margin-bottom: 24px;
   padding: 16px;
-  background: #f8f9fa;
+  background: var(--bg-secondary);
   border-radius: 8px;
 }
 
@@ -43,7 +43,7 @@
 
 .ratio-buttons button {
   padding: 8px 16px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--border);
   background: white;
   border-radius: 6px;
   cursor: pointer;
@@ -70,7 +70,7 @@
   text-align: center;
   cursor: pointer;
   transition: all 0.3s;
-  background: #fafafa;
+  background: var(--bg-secondary);
 }
 
 .upload-area:hover,
@@ -91,7 +91,7 @@
 }
 
 .upload-area p {
-  color: #666;
+  color: var(--text);
   margin: 4px 0;
 }
 
@@ -254,7 +254,7 @@
   position: static;
   opacity: 1;
   background: #f0f0f0;
-  color: #666;
+  color: var(--text);
 }
 
 .media-list-item .remove-btn:hover {
@@ -269,7 +269,7 @@
   gap: 12px;
   margin-top: 32px;
   padding-top: 24px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border);
 }
 
 .proceed-btn {
@@ -325,6 +325,6 @@
 
 .loading-overlay p {
   margin-top: 16px;
-  color: #666;
+  color: var(--text);
   font-size: 1rem;
 }

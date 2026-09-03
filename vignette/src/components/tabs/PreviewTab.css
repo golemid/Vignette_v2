@@ -27,7 +27,7 @@
 }
 
 .validation-btn.warning {
-  background: #fff3cd;
+  background: var(--bg)3cd;
   color: #856404;
 }
 
@@ -172,7 +172,7 @@
 
 .setting-group select {
   padding: 10px 12px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--border);
   border-radius: 8px;
   font-size: 1rem;
   background: white;
@@ -214,7 +214,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 0.875rem;
-  color: #666;
+  color: var(--text);
   margin-bottom: 8px;
 }
 
@@ -232,7 +232,7 @@
   justify-content: flex-end;
   align-items: center;
   padding-top: 24px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border);
 }
 
 .export-warning {

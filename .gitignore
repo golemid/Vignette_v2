@@ -1,1 +1,34 @@
-Nothing should be ignored in this case, as the changes only include source code files (.css, .tsx) and there are no build artifacts, dependencies, or temporary files in the provided list.
+```
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+htmlcov/
+
+# Environment variables
+.env
+.env.local
+*.env.*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# Python cache (if any Python files exist in the project)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+*.log
+
+# Coverage
+.coverage
+```

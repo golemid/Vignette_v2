@@ -11,7 +11,7 @@
   gap: 16px;
   margin-bottom: 24px;
   padding: 16px;
-  background: #f8f9fa;
+  background: var(--bg-secondary);
   border-radius: 8px;
 }
 
@@ -28,7 +28,7 @@
 
 .preset-buttons button {
   padding: 8px 16px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--border);
   background: white;
   border-radius: 6px;
   cursor: pointer;
@@ -136,15 +136,15 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
 }
 
 .group-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #666;
+  color: var(--text);
 }
 
 .group-name-input {
@@ -167,7 +167,7 @@
   align-items: center;
   gap: 8px;
   font-size: 0.875rem;
-  color: #666;
+  color: var(--text);
 }
 
 .hook-badge {
@@ -191,7 +191,7 @@
   aspect-ratio: 9/16;
   position: relative;
   overflow: hidden;
-  background: #e0e0e0;
+  background: var(--border);
   border-radius: 4px;
 }
 
@@ -222,7 +222,7 @@
   display: flex;
   gap: 8px;
   padding: 12px 16px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border);
 }
 
 .rotate-45 {
@@ -233,7 +233,7 @@
 .empty-state {
   text-align: center;
   padding: 80px 40px;
-  background: #f8f9fa;
+  background: var(--bg-secondary);
   border-radius: 12px;
   margin-bottom: 32px;
 }
@@ -250,7 +250,7 @@
 }
 
 .empty-state p {
-  color: #666;
+  color: var(--text);
   margin-bottom: 24px;
 }
 
@@ -298,7 +298,7 @@
   gap: 12px;
   margin-top: 32px;
   padding-top: 24px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border);
 }
 
 .proceed-btn {
