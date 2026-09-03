@@ -103,7 +103,7 @@ export interface ProjectState {
   autoSaveEnabled: boolean;
   
   // UI State
-  currentTab: 'catalog' | 'groups' | 'script' | 'audio' | 'preview' | 'project';
+  currentTab: 'catalog' | 'groups' | 'script' | 'audio' | 'preview' | 'project' | 'terminal';
   isLoading: boolean;
   validationErrors: string[];
 }

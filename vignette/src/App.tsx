@@ -6,7 +6,8 @@ import { ScriptTab } from './components/tabs/ScriptTab';
 import { AudioTab } from './components/tabs/AudioTab';
 import { PreviewTab } from './components/tabs/PreviewTab';
 import { ProjectTab } from './components/tabs/ProjectTab';
-import { FileImage, FolderTree, FileText, Music, PlaySquare, Settings } from 'lucide-react';
+import { TerminalTab } from './components/tabs/TerminalTab';
+import { FileImage, FolderTree, FileText, Music, PlaySquare, Settings, Terminal } from 'lucide-react';
 import './App.css';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
     { id: 'audio', label: 'Audio', icon: Music },
     { id: 'preview', label: 'Preview', icon: PlaySquare },
     { id: 'project', label: 'Project', icon: Settings },
+    { id: 'terminal', label: 'Terminal', icon: Terminal },
   ] as const;
   
   const renderTab = () => {
@@ -35,6 +37,8 @@ function App() {
         return <PreviewTab />;
       case 'project':
         return <ProjectTab />;
+      case 'terminal':
+        return <TerminalTab />;
       default:
         return <CatalogTab />;
     }
