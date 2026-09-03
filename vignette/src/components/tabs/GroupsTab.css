@@ -321,3 +321,43 @@
   background: #ccc;
   cursor: not-allowed;
 }
+
+/* Drag and Drop Styles */
+.group-image.dragging {
+  opacity: 0.5;
+  transform: scale(1.05);
+  z-index: 100;
+}
+
+.group-image.dragging-overlay {
+  width: 200px;
+  aspect-ratio: 9/16;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  transform: rotate(-3deg);
+  pointer-events: none;
+}
+
+.group-image .image-overlay {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  padding: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  color: white;
+}
+
+.group-image:hover .image-overlay {
+  opacity: 1;
+}
+
+.group-card[data-group-id] {
+  transition: background-color 0.2s;
+}
+
+.group-card[data-group-id]:has(.group-image.dragging) {
+  background: rgba(0, 123, 255, 0.05);
+}
