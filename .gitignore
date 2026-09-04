@@ -2,15 +2,42 @@
 # Dependencies
 node_modules/
 
+# Build outputs
+dist/
+build/
+*.js
+*.ts
+
+# TypeScript
+*.tsbuildinfo
+*.tsx
+
 # Environment
 .env
 .env.local
 .env.*
 
-# Build artifacts
-dist/
-build/
-target/
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
 
 # Python
 __pycache__/
@@ -18,39 +45,62 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
-env/
+*.so
+
+# Virtual environments
 venv/
 .venv/
-.venv.bak/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-*.pot
-*.pyc
-*.pyo
-*.pyd
-.MF
-tags
-TAGS
-.idlerc/
-.python-version
-*.so
-.libs/
-.pytest_cache/
-.mypy_cache/
-.hypothesis/
+.env/
 
-# Logs
-*.log
+# Node.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# OS generated files
+# Compiled JavaScript
+lib-cov
+*.min.js
+
+# Distribution / packaging
+.Python
+*.egg-info/
+.eggs/
+.installed.cfg
+*.egg
+
+# Testing
+.nyc_output/
+coverage/
+.cover/
+
+# Bower dependency directory
+bower_components/
+
+# Grunt intermediate storage
+.grunt
+
+# Git book output
+_book
+
+# JSHint
+.jshintrc
+
+# Files which might appear on external disk
+.Spotlight-V100
+.Trashes
+
+# Macports generated data
+*.dmg
+
+# Local configuration files
+.settings/
+
+# Editor temporary files
+*.swp
+*.swo
+*~
+
+# Various
 .DS_Store
 .DS_Store?
 ._*
@@ -58,16 +108,4 @@ TAGS
 .Trashes
 ehthumbs.db
 Thumbs.db
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Testing
-coverage/
-htmlcov/
-.coveralls.yml
 ```

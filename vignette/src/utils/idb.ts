@@ -1,4 +1,4 @@
-import { openDB, DBSchema, IDBPDatabase } from 'idb';
+import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 
 interface VignetteDB extends DBSchema {
   media: {
@@ -87,7 +87,7 @@ export const getMediaFile = async (id: string): Promise<{
   hookScore?: number;
 } | null> => {
   const db = await getDB();
-  return db.get('media', id);
+  return (await db.get('media', id)) ?? null;
 };
 
 export const getAllMediaFiles = async (): Promise<Array<{
