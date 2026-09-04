@@ -1,23 +1,7 @@
-import { useProjectStore } from '../store/useStore';
+import { useProjectStore, type VoicePersona } from '../store/useStore';
 import { clusterImages } from '../ai/services/visionService';
 import { generateEDL, generateNarration } from '../ai/services/textService';
-import { synthesizeSpeech } from '../ai/services/ttsService';
-
-export type PipelineStage = 
-  | 'idle'
-  | 'grouping'
-  | 'writing-edl'
-  | 'generating-narration'
-  | 'synthesizing-tts'
-  | 'complete'
-  | 'error';
-
-export interface PipelineProgress {
-  stage: PipelineStage;
-  percent: number;
-  message: string;
-  error?: string;
-}
+import { synthesizeSpeech, type TTSPersona } from '../ai/services/ttsService';
 
 class Orchestrator {
   private isRunning = false;
@@ -89,8 +73,15 @@ class Orchestrator {
       }
 
       const voice = useProjectStore.getState().selectedVoice;
+      // Convert VoicePersona to TTSPersona for TTS service
+      const ttsPersona: TTSPersona | undefined = voice ? {
+        id: voice.id,
+        name: voice.name,
+        pitch: voice.pitch,
+        speed: voice.speed,
+      } : undefined;
       try {
-        await synthesizeSpeech(narrationText, voice);
+        await synthesizeSpeech(narrationText, ttsPersona);
         this._updateProgress('synthesizing-tts', 95, 'TTS synthesis complete');
       } catch (ttsError) {
         // Graceful degradation: log error, set narration blob to null, continue
@@ -124,7 +115,7 @@ class Orchestrator {
     }
   }
 
-  private _updateProgress(stage: PipelineStage, percent: number, message: string, error?: string): void {
+  private _updateProgress(stage: string, percent: number, message: string, error?: string): void {
     // Dispatch a custom event for UI components to listen to
     window.dispatchEvent(new CustomEvent('pipeline-progress', { 
       detail: { stage, percent, message, error } 
