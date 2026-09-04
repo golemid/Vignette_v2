@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import * as idb from '../utils/idb';
 
 export type AspectRatio = '9:16' | '16:9';
 export type ExecutionMode = 'auto-pilot' | 'step-by-step';
@@ -65,6 +64,7 @@ export interface AudioTrack {
   name: string;
   type: 'narration' | 'music' | 'sfx' | 'ambient';
   url?: string;
+  blob?: Blob;
   volume: number;
   startTime: number;
   duration: number;
@@ -200,20 +200,6 @@ interface ProjectActions {
 
 const activeObjectUrls: Set<string> = new Set();
 
-const createTrackedObjectURL = (blob: Blob): string => {
-  const url = URL.createObjectURL(blob);
-  activeObjectUrls.add(url);
-  return url;
-};
-
-const revokeTrackedObjectURL = (url: string | undefined): void => {
-  if (!url) return;
-  if (activeObjectUrls.has(url)) {
-    URL.revokeObjectURL(url);
-    activeObjectUrls.delete(url);
-  }
-};
-
 const revokeAllObjectURLs = (): void => {
   activeObjectUrls.forEach((url) => {
     URL.revokeObjectURL(url);
@@ -221,7 +207,7 @@ const revokeAllObjectURLs = (): void => {
   activeObjectUrls.clear();
 };
 
-const cascadeInvalidation = (set: (fn: (s: ProjectState) => void) => void, _get: () => ProjectState, source: 'mediaFiles' | 'groups' | 'edlClips') => {
+const _cascadeInvalidation = (set: (fn: (s: ProjectState) => void) => void, _get: () => ProjectState, source: 'mediaFiles' | 'groups' | 'edlClips') => {
   if (source === 'mediaFiles') {
     set((s: ProjectState) => {
       s.groups = [];
@@ -247,7 +233,7 @@ const cascadeInvalidation = (set: (fn: (s: ProjectState) => void) => void, _get:
 };
 
 export const useProjectStore = create<ProjectState & ProjectActions>()(
-  immer((set, get) => ({
+  immer((set) => ({
     ...initialState,
     
     initializeFromDB: async () => {},
@@ -304,7 +290,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>()(
   }))
 );
 
-async function generateProxyBlob(file: File): Promise<Blob> {
+async function _generateProxyBlob(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const canvas = document.createElement('canvas');
@@ -330,7 +316,7 @@ async function generateProxyBlob(file: File): Promise<Blob> {
   });
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
+function _loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);

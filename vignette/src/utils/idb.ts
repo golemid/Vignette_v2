@@ -55,7 +55,7 @@ export const getDB = async (): Promise<IDBPDatabase<VignetteDB>> => {
   if (dbInstance) return dbInstance;
 
   dbInstance = await openDB<VignetteDB>(DB_NAME, DB_VERSION, {
-    upgrade(db, oldVersion) {
+    upgrade(db) {
       // Media store for File/Blob objects
       if (!db.objectStoreNames.contains('media')) {
         const mediaStore = db.createObjectStore('media', { keyPath: 'id' });

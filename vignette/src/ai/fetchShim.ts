@@ -6,8 +6,7 @@
  * This ensures all weights are stored locally and never in Cache Storage.
  */
 
-import { getModelDirectory, listFiles } from './libraryManager';
-import { downloadModel } from './downloadManager';
+import { listFiles } from './libraryManager';
 import { getLibraryDirectory } from '../utils/idb';
 
 interface CachedFileHandle {

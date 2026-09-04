@@ -1,93 +1,58 @@
-```
+```gitignore
 # Dependencies
 node_modules/
 
-# Build artifacts
+# Build outputs
 dist/
 build/
-*.js.map
-*.ts.map
+*.js
+*.ts
+*.tsx
 
-# Environment variables
+# Logs and temp files
+*.log
+*.tmp
+
+# Environment
 .env
 .env.local
 *.env.*
 
-# IDE specific
+# Editors
 .vscode/
 .idea/
-
-# OS generated
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-
-# Temporary files
-*.tmp
 *.swp
 *.swo
 
-# Python cache (if any Python files exist in the project)
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Coverage reports
+# Coverage
 coverage/
 htmlcov/
+.coverage
 
 # Distribution / packaging
-*.tar.gz
-*.whl
-*.egg-info/
-
-# System files
-*.swp
-*.swo
-
-# Additional common ignores
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
 *.log
 *.tmp
+*.bak
+*.swp
+*.swo
 .DS_Store
 Thumbs.db
-
-# Package manager specific
-package-lock.json
-yarn.lock
-
-# Runtime data
-pids
-*.pid
-*.seed
-
-# Debug files
-*.log
-
-# Testing
-coverage/
-.nyc_output/
-coverage.lcov
-
-# Node specific
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Browser extensions
-devtools.html
-
-# TypeScript
-*.tsbuildinfo
-
-# ONNX runtime binaries
-node_modules/onnxruntime-node/bin/
-
-# Sharp native modules
-node_modules/sharp/build/
-node_modules/sharp/src/
-node_modules/@img/sharp-linux-x64/
-
 ```

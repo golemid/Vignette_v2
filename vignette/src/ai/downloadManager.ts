@@ -295,8 +295,7 @@ const processQueue = async (): Promise<void> => {
 export const downloadModel = async (
   modelId: string,
   directoryHandle: FileSystemDirectoryHandle,
-  onProgress?: ProgressCallback,
-  signal?: AbortSignal
+  onProgress?: ProgressCallback
 ): Promise<void> => {
   const model = getModelById(modelId);
   if (!model) {

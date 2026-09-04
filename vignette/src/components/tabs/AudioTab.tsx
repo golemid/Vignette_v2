@@ -89,10 +89,10 @@ export const AudioTab: React.FC = () => {
         id: `tts_${Date.now()}`,
         name: 'AI Narration',
         type: 'narration' as const,
+        blob: result.audioBlob,
         volume: 1.0,
         startTime: 0,
         duration: result.duration,
-        sourceBlob: result.audioBlob,
       });
     } catch (error: any) {
       console.error('TTS synthesis failed:', error);
