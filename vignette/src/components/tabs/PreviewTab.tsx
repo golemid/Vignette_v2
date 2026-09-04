@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useProjectStore } from '../../store/useStore';
-import { Play, Settings, AlertTriangle, CheckCircle, Download, Monitor } from 'lucide-react';
-import { renderTestVideo } from '../../utils/ffmpegRender';
+import { Play, Settings, AlertTriangle, CheckCircle, Monitor, Pause } from 'lucide-react';
+import { renderFullEDL, checkWasmCapabilities } from '../../utils/ffmpegRender';
 import './PreviewTab.css';
 
 export const PreviewTab: React.FC = () => {
@@ -9,23 +9,47 @@ export const PreviewTab: React.FC = () => {
     previewResolution,
     previewFrameRate,
     previewCodec,
-    isPreviewReady,
     validationErrors,
     mediaFiles,
-    generatePreview,
+    edlClips,
+    audioTracks,
+    duckingEnabled,
+    duckingDepth,
     setPreviewSettings,
     validateProject,
     isLoading
   } = useProjectStore();
   
   const [showValidation, setShowValidation] = React.useState(false);
-  const [isTestRendering, setIsTestRendering] = React.useState(false);
-  const [testRenderError, setTestRenderError] = React.useState<string | null>(null);
+  const [isRendering, setIsRendering] = React.useState(false);
+  const [renderError, setRenderError] = React.useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [renderProgress, setRenderProgress] = useState(0);
+  const [wasmInfo, setWasmInfo] = useState<{ sharedArrayBuffer: boolean; multiThreaded: boolean } | null>(null);
   
-  React.useEffect(() => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  
+  useEffect(() => {
+    // Check WASM capabilities on mount
+    const caps = checkWasmCapabilities();
+    setWasmInfo(caps);
+    console.log(`WASM Capabilities: SharedArrayBuffer=${caps.sharedArrayBuffer}, Multi-threaded=${caps.multiThreaded}`);
+    
     // Auto-generate preview on tab entry
-    generatePreview();
+    handleRender();
   }, []);
+  
+  useEffect(() => {
+    // Cleanup video URL on unmount
+    return () => {
+      if (videoUrl) {
+        URL.revokeObjectURL(videoUrl);
+      }
+    };
+  }, [videoUrl]);
   
   const handleValidate = () => {
     const errors = validateProject();
@@ -33,31 +57,75 @@ export const PreviewTab: React.FC = () => {
     return errors.length === 0;
   };
   
-  const handleExport = () => {
-    console.log('Starting export with settings:', {
-      resolution: previewResolution,
-      frameRate: previewFrameRate,
-      codec: previewCodec,
-    });
-  };
-  
-  const handleTestRender = async () => {
-    setTestRenderError(null);
-    setIsTestRendering(true);
+  const handleRender = async () => {
+    setRenderError(null);
+    setIsRendering(true);
+    setRenderProgress(0);
     
     try {
-      // Get media files from store
-      const state = useProjectStore.getState();
-      await renderTestVideo(state.mediaFiles);
-      console.log('Test render completed successfully');
+      // Revoke old URL if exists
+      if (videoUrl) {
+        URL.revokeObjectURL(videoUrl);
+      }
+      
+      const settings = {
+        resolution: previewResolution as '720p' | '1080p' | '4K',
+        frameRate: previewFrameRate as 24 | 30 | 60,
+        codec: previewCodec as 'h264' | 'h265',
+        duckingEnabled,
+        duckingDepth
+      };
+      
+      const url = await renderFullEDL(edlClips, settings, mediaFiles, audioTracks, (progress) => {
+        setRenderProgress(progress);
+      });
+      
+      setVideoUrl(url);
+      setRenderProgress(100);
+      console.log('Render completed successfully');
     } catch (error: any) {
-      console.error('Test render failed:', error);
-      setTestRenderError(error.message || 'Test render failed. Please check console for details.');
+      console.error('Render failed:', error);
+      setRenderError(error.message || 'Render failed. Please check console for details.');
     } finally {
-      setIsTestRendering(false);
+      setIsRendering(false);
     }
   };
   
+  const handlePlayPause = () => {
+    if (!videoRef.current) return;
+    
+    if (isPlaying) {
+      videoRef.current.pause();
+    } else {
+      videoRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+  
+  const handleTimeUpdate = () => {
+    if (!videoRef.current) return;
+    setCurrentTime(videoRef.current.currentTime);
+  };
+  
+  const handleLoadedMetadata = () => {
+    if (!videoRef.current) return;
+    setDuration(videoRef.current.duration);
+    setIsPlaying(true);
+  };
+  
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const time = parseFloat(e.target.value);
+    if (!videoRef.current) return;
+    videoRef.current.currentTime = time;
+    setCurrentTime(time);
+  };
+  
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const resolutions = ['720p', '1080p', '4K'] as const;
   const frameRates = [24, 30, 60] as const;
   const codecs = ['h264', 'h265'] as const;
@@ -68,6 +136,19 @@ export const PreviewTab: React.FC = () => {
         <h1>Preview & Export</h1>
         <p className="tab-description">Review the complete composition and configure export settings</p>
       </div>
+      
+      {/* WASM Info */}
+      {wasmInfo && (
+        <div className="wasm-info" style={{ 
+          padding: '0.5rem 1rem', 
+          background: wasmInfo.multiThreaded ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255, 152, 0, 0.2)',
+          borderRadius: '6px',
+          marginBottom: '1rem',
+          fontSize: '0.85rem'
+        }}>
+          <strong>WASM:</strong> {wasmInfo.multiThreaded ? 'Multi-threaded (SharedArrayBuffer enabled)' : 'Single-threaded (COOP/COEP not configured)'}
+        </div>
+      )}
       
       {/* Validation Status */}
       <div className="validation-section">
@@ -107,37 +188,82 @@ export const PreviewTab: React.FC = () => {
             <Monitor size={20} />
             Preview Player
           </h2>
-          <button className="action-btn primary">
-            <Play size={18} />
-            Play Preview
+          <button 
+            className="action-btn primary" 
+            onClick={handlePlayPause}
+            disabled={!videoUrl || isRendering}
+          >
+            {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+            {isPlaying ? 'Pause' : 'Play'}
           </button>
         </div>
         
         <div className="preview-player">
-          {isLoading ? (
+          {isRendering ? (
             <div className="preview-loading">
               <div className="spinner"></div>
-              <p>Generating preview...</p>
-            </div>
-          ) : isPreviewReady ? (
-            <div className="preview-content">
-              <div className="preview-placeholder">
-                <Play size={64} />
-                <p>Preview Ready - Click play to review</p>
+              <p>Rendering preview... {renderProgress}%</p>
+              <div className="progress-bar-container" style={{ 
+                width: '200px', 
+                height: '8px', 
+                background: 'rgba(255,255,255,0.2)',
+                borderRadius: '4px',
+                marginTop: '0.5rem'
+              }}>
+                <div className="progress-bar-fill" style={{
+                  width: `${renderProgress}%`,
+                  height: '100%',
+                  background: 'var(--accent)',
+                  borderRadius: '4px',
+                  transition: 'width 0.2s'
+                }}></div>
               </div>
+            </div>
+          ) : videoUrl ? (
+            <div className="preview-content">
+              <video
+                ref={videoRef}
+                src={videoUrl}
+                className="preview-video"
+                onTimeUpdate={handleTimeUpdate}
+                onLoadedMetadata={handleLoadedMetadata}
+                onEnded={() => setIsPlaying(false)}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '50vh',
+                  background: '#000'
+                }}
+              />
               <div className="timeline-scrubber">
-                <input type="range" min="0" max="100" defaultValue="0" />
+                <input 
+                  type="range" 
+                  min="0" 
+                  max={duration || 100} 
+                  step="0.1"
+                  value={currentTime}
+                  onChange={handleSeek}
+                  className="scrubber-input"
+                  style={{ width: '100%' }}
+                />
                 <div className="time-display">
-                  <span>0:00</span>
-                  <span>0:30</span>
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(duration)}</span>
                 </div>
               </div>
             </div>
-          ) : (
+          ) : renderError ? (
             <div className="preview-error">
               <AlertTriangle size={48} />
               <p>Preview generation failed</p>
-              <button onClick={() => generatePreview()}>Retry</button>
+              <p style={{ fontSize: '0.9rem', color: '#f44336' }}>{renderError}</p>
+              <button onClick={handleRender}>Retry</button>
+            </div>
+          ) : (
+            <div className="preview-placeholder-wrapper">
+              <div className="preview-placeholder">
+                <Play size={64} />
+                <p>Click "Generate Preview" to render</p>
+              </div>
             </div>
           )}
         </div>
@@ -206,80 +332,53 @@ export const PreviewTab: React.FC = () => {
         </div>
       </section>
       
-      {/* System Resources */}
+      {/* Filter Graph Info */}
       <section className="resources-section">
         <div className="section-header">
-          <h2>System Resources</h2>
+          <h2>Filter Graph Structure</h2>
         </div>
-        
-        <div className="resource-monitors">
-          <div className="resource-bar">
-            <div className="resource-label">
-              <span>GPU VRAM</span>
-              <span>4.2 / 8 GB</span>
-            </div>
-            <div className="resource-fill" style={{ width: '52%' }}></div>
-          </div>
-          
-          <div className="resource-bar">
-            <div className="resource-label">
-              <span>Memory</span>
-              <span>6.8 / 16 GB</span>
-            </div>
-            <div className="resource-fill" style={{ width: '42%' }}></div>
-          </div>
-          
-          <div className="resource-bar">
-            <div className="resource-label">
-              <span>CPU</span>
-              <span>28%</span>
-            </div>
-            <div className="resource-fill" style={{ width: '28%' }}></div>
-          </div>
+        <div style={{ 
+          fontFamily: 'monospace', 
+          fontSize: '0.75rem', 
+          background: 'rgba(0,0,0,0.3)', 
+          padding: '1rem', 
+          borderRadius: '6px',
+          overflowX: 'auto',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-all'
+        }}>
+          <p style={{ marginBottom: '0.5rem', color: '#81c784' }}>
+            Video Chain: [N:v] → scale/pad → zoompan → trim → drawtext → [segN] → xfade chain → output
+          </p>
+          <p style={{ color: '#64b5f6' }}>
+            Audio Chain: Music → sidechaincompress (ducking) → amix with narration → output
+          </p>
+          <p style={{ marginTop: '0.5rem', fontSize: '0.7rem', color: '#aaa' }}>
+            Note: Actual filter_complex logged to console during render
+          </p>
         </div>
       </section>
       
       {/* Export Actions */}
       <div className="export-actions">
         <button
-          className="action-btn secondary"
-          onClick={handleTestRender}
-          disabled={isTestRendering || mediaFiles.length === 0}
-        >
-          {isTestRendering ? 'Rendering...' : 'Test Render (3s)'}
-        </button>
-        
-        {testRenderError && (
-          <div className="test-render-error" style={{ 
-            padding: '0.75rem', 
-            background: 'var(--error)', 
-            borderRadius: '6px',
-            color: '#fff',
-            fontSize: '0.9rem'
-          }}>
-            {testRenderError}
-          </div>
-        )}
-        
-        <button
           className="action-btn primary large"
-          onClick={handleExport}
-          disabled={validationErrors.length > 0 || isLoading}
+          onClick={handleRender}
+          disabled={isLoading || edlClips.length === 0}
         >
-          <Download size={20} />
-          Start Final Export
+          {isRendering ? `Rendering ${renderProgress}%...` : 'Generate Preview'}
         </button>
+        
+        {edlClips.length === 0 && (
+          <p className="export-warning" style={{ marginTop: '0.5rem' }}>
+            ⚠️ Generate EDL clips before rendering
+          </p>
+        )}
       </div>
       
       {validationErrors.length > 0 && (
         <p className="export-warning">
           Please resolve validation errors before exporting
-        </p>
-      )}
-      
-      {mediaFiles.length === 0 && (
-        <p className="export-warning" style={{ marginTop: '0.5rem' }}>
-          ⚠️ Upload images to the Catalog before testing render
         </p>
       )}
     </div>
