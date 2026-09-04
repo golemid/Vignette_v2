@@ -1,5 +1,5 @@
-import React from 'react';
-import { useProjectStore, defaultVoicePersonas } from '../../store/useStore';
+import React, { useEffect, useState } from 'react';
+import { useProjectStore, getHighQualityVoices } from '../../store/useStore';
 import { Mic, Music, Volume2, Waves, Play, Pause, Settings } from 'lucide-react';
 import './AudioTab.css';
 
@@ -17,12 +17,29 @@ export const AudioTab: React.FC = () => {
     updateAudioTrack,
     setDucking,
     previewAudio,
+    stopAudio,
     setCurrentTab,
     isLoading,
     executionMode
   } = useProjectStore();
   
   const [isPlaying, setIsPlaying] = React.useState(false);
+  const [systemVoices, setSystemVoices] = useState<SpeechSynthesisVoice[]>([]);
+  
+  // Load system voices on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      const loadVoices = () => {
+        const voices = getHighQualityVoices();
+        setSystemVoices(voices.length > 0 ? voices : window.speechSynthesis.getVoices());
+      };
+      
+      loadVoices();
+      
+      // Voices may load asynchronously
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+  }, []);
   
   const handleGenerateNarration = async () => {
     await generateNarration();
@@ -93,36 +110,90 @@ export const AudioTab: React.FC = () => {
           <h2>Voice Persona</h2>
         </div>
         
-        <div className="voice-grid">
-          {defaultVoicePersonas.map(voice => (
-            <button
-              key={voice.id}
-              className={`voice-card ${selectedVoice?.id === voice.id ? 'selected' : ''}`}
-              onClick={() => selectVoice(voice)}
+        {systemVoices.length > 0 ? (
+          <div className="voice-select-container" style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Select System Voice:</label>
+            <select
+              value={selectedVoice?.id || ''}
+              onChange={(e) => {
+                const voice = systemVoices.find(v => v.name === e.target.value);
+                if (voice) {
+                  selectVoice({
+                    id: voice.name,
+                    name: voice.name,
+                    pitch: 1.0,
+                    speed: 1.0
+                  });
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border)',
+                borderRadius: '6px',
+                color: 'var(--text)',
+                fontSize: '1rem'
+              }}
             >
-              <div className="voice-icon">
-                <Mic size={24} />
-              </div>
-              <h4>{voice.name}</h4>
-              <div className="voice-params">
-                <span>Pitch: {voice.pitch}</span>
-                <span>Speed: {voice.speed}x</span>
-              </div>
-              {selectedVoice?.id === voice.id && (
-                <div className="selected-badge">✓ Selected</div>
-              )}
-            </button>
-          ))}
-        </div>
+              {systemVoices.map((voice, index) => (
+                <option key={`${voice.name}-${index}`} value={voice.name}>
+                  {voice.name} ({voice.lang}){voice.default ? ' - Default' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="voice-grid">
+            {defaultVoicePersonas.map(voice => (
+              <button
+                key={voice.id}
+                className={`voice-card ${selectedVoice?.id === voice.id ? 'selected' : ''}`}
+                onClick={() => selectVoice(voice)}
+              >
+                <div className="voice-icon">
+                  <Mic size={24} />
+                </div>
+                <h4>{voice.name}</h4>
+                <div className="voice-params">
+                  <span>Pitch: {voice.pitch}</span>
+                  <span>Speed: {voice.speed}x</span>
+                </div>
+                {selectedVoice?.id === voice.id && (
+                  <div className="selected-badge">✓ Selected</div>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
         
-        <button
-          className="action-btn primary"
-          onClick={() => previewAudio()}
-          disabled={!selectedVoice}
-        >
-          <Play size={18} />
-          Preview Voice
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+          <button
+            className="action-btn primary"
+            onClick={() => {
+              setIsPlaying(true);
+              previewAudio();
+            }}
+            disabled={!narrationText}
+            style={{ flex: 1 }}
+          >
+            <Play size={18} />
+            {isPlaying ? 'Playing...' : 'Preview Narration'}
+          </button>
+          
+          {isPlaying && (
+            <button
+              className="action-btn secondary"
+              onClick={() => {
+                setIsPlaying(false);
+                stopAudio();
+              }}
+            >
+              <Pause size={18} />
+              Stop
+            </button>
+          )}
+        </div>
       </section>
       
       {/* Background Music */}

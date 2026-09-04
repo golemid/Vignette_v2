@@ -116,6 +116,27 @@ const defaultVoicePersonas: VoicePersona[] = [
   { id: 'v4', name: 'Dramatic Voice', pitch: 0.85, speed: 0.85 },
 ];
 
+// Get available system voices from Web Speech API
+const getSystemVoices = (): SpeechSynthesisVoice[] => {
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    return window.speechSynthesis.getVoices();
+  }
+  return [];
+};
+
+// Filter for high-quality voices
+const getHighQualityVoices = (): SpeechSynthesisVoice[] => {
+  const voices = getSystemVoices();
+  // Prefer premium/high quality voices, filter by language
+  return voices.filter(voice => 
+    voice.default || 
+    voice.name.toLowerCase().includes('premium') ||
+    voice.name.toLowerCase().includes('enhanced') ||
+    voice.name.toLowerCase().includes('google') ||
+    voice.name.toLowerCase().includes('microsoft')
+  );
+};
+
 const initialState: ProjectState = {
   // Tab 1: Catalog
   mediaFiles: [],
@@ -471,7 +492,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>()(
       const clips = get().edlClips;
       let narration = '';
       
-      clips.forEach((clip, index) => {
+      clips.forEach((_clip, index) => {
         const sceneText = `\n[Scene ${index + 1}] The story unfolds...`;
         narration += sceneText;
       });
@@ -524,8 +545,67 @@ export const useProjectStore = create<ProjectState & ProjectActions>()(
     },
     
     previewAudio: () => {
-      console.log('Playing audio preview...');
-      // In real app, this would play the audio with current settings
+      const state = get();
+      if (!state.narrationText || typeof window === 'undefined' || !window.speechSynthesis) {
+        console.warn('Web Speech API not available or no narration text');
+        return;
+      }
+      
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
+      
+      // Clean narration text: strip SSML-like tags and replace with punctuation
+      let cleanText = state.narrationText
+        .replace(/\[.*?\]/g, '') // Remove bracketed instructions like [Scene 1]
+        .replace(/<[^>]*>/g, '') // Remove any HTML/SSML tags
+        .replace(/\n+/g, '. ')   // Replace newlines with periods
+        .replace(/\s+/g, ' ')    // Normalize whitespace
+        .trim();
+      
+      // Add pauses for natural speech (using punctuation)
+      cleanText = cleanText.replace(/\.\.\./g, ',,,'); // Extra pauses
+      
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      
+      // Apply voice settings from selected voice persona
+      if (state.selectedVoice) {
+        utterance.pitch = state.selectedVoice.pitch;
+        utterance.rate = state.selectedVoice.speed;
+      }
+      
+      // Try to match a system voice to the selected persona
+      const systemVoices = getSystemVoices();
+      if (systemVoices.length > 0 && state.selectedVoice) {
+        // Prefer English voices, match by name if possible
+        const preferredVoice = systemVoices.find(v => 
+          v.lang.startsWith('en') && 
+          (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('male'))
+        ) || systemVoices.find(v => v.lang.startsWith('en')) || systemVoices[0];
+        
+        utterance.voice = preferredVoice;
+      }
+      
+      // Handle events
+      utterance.onstart = () => {
+        console.log('Speech synthesis started');
+      };
+      
+      utterance.onend = () => {
+        console.log('Speech synthesis completed');
+      };
+      
+      utterance.onerror = (event) => {
+        console.error('Speech synthesis error:', event);
+      };
+      
+      window.speechSynthesis.speak(utterance);
+    },
+    
+    stopAudio: () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        console.log('Speech synthesis stopped');
+      }
     },
     
     // Preview Actions
@@ -642,7 +722,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>()(
       aspectRatio: state.aspectRatio,
       visualStylePreset: state.visualStylePreset,
     }),
-    onRehydrateStorage: () => (state, error) => {
+    onRehydrateStorage: () => (_state, error) => {
       if (error) {
         console.error('Failed to rehydrate vignette-storage:', error);
       } else {

@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useProjectStore } from '../../store/useStore';
-import { Upload, X, Image as ImageIcon, Trash2, Grid3X3, Database } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, Grid3X3, Database } from 'lucide-react';
 import { injectMockData } from '../../utils/mockData';
 import './CatalogTab.css';
 

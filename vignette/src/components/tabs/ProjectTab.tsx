@@ -1,6 +1,6 @@
 import React from 'react';
 import { useProjectStore } from '../../store/useStore';
-import { Settings, Save, FolderOpen, Undo, Redo, Keyboard, LayoutTemplate, Download as DownloadIcon, Upload as UploadIcon } from 'lucide-react';
+import { Settings, Save, FolderOpen, Keyboard, LayoutTemplate, Download as DownloadIcon, Upload as UploadIcon } from 'lucide-react';
 import './ProjectTab.css';
 
 export const ProjectTab: React.FC = () => {
