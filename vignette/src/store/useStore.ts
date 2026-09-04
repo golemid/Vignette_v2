@@ -221,7 +221,7 @@ const revokeAllObjectURLs = (): void => {
   activeObjectUrls.clear();
 };
 
-const cascadeInvalidation = (set: any, get: any, source: 'mediaFiles' | 'groups' | 'edlClips') => {
+const cascadeInvalidation = (set: (fn: (s: ProjectState) => void) => void, _get: () => ProjectState, source: 'mediaFiles' | 'groups' | 'edlClips') => {
   if (source === 'mediaFiles') {
     set((s: ProjectState) => {
       s.groups = [];

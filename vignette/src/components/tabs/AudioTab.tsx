@@ -63,23 +63,13 @@ export const AudioTab: React.FC = () => {
         result = generateFallbackNarration(edlClips, thematicScript);
       }
       
-      // Update store
-      const { set } = useProjectStore.getState();
-      if (set) {
-        set((s: any) => {
-          s.narrationText = result.narration;
-        });
-      }
+      // Update store using the proper action
+      updateNarrationText(result.narration);
     } catch (error: any) {
       console.error('Narration generation failed:', error);
       // Fallback
       const fallbackResult = generateFallbackNarration(edlClips, thematicScript);
-      const { set } = useProjectStore.getState();
-      if (set) {
-        set((s: any) => {
-          s.narrationText = fallbackResult.narration;
-        });
-      }
+      updateNarrationText(fallbackResult.narration);
     }
   };
   
@@ -95,23 +85,15 @@ export const AudioTab: React.FC = () => {
       const result = await synthesizeSpeech(narrationText, persona);
       
       // Add audio track with the synthesized blob
-      const { set } = useProjectStore.getState();
-      if (set) {
-        set((s: any) => {
-          s.audioTracks = [
-            ...s.audioTracks,
-            {
-              id: `tts_${Date.now()}`,
-              name: 'AI Narration',
-              type: 'narration' as const,
-              volume: 1.0,
-              startTime: 0,
-              duration: result.duration,
-              sourceBlob: result.audioBlob,
-            },
-          ];
-        });
-      }
+      addAudioTrack({
+        id: `tts_${Date.now()}`,
+        name: 'AI Narration',
+        type: 'narration' as const,
+        volume: 1.0,
+        startTime: 0,
+        duration: result.duration,
+        sourceBlob: result.audioBlob,
+      });
     } catch (error: any) {
       console.error('TTS synthesis failed:', error);
       setAutoplayError('Failed to synthesize narration. Using fallback.');

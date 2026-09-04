@@ -1,1 +1,93 @@
-Nothing should be ignored based on the provided file changes, as they only include source code files (.ts) without any build artifacts, dependencies, or temporary files.
+```
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+build/
+*.js.map
+*.ts.map
+
+# Environment variables
+.env
+.env.local
+*.env.*
+
+# IDE specific
+.vscode/
+.idea/
+
+# OS generated
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+
+# Python cache (if any Python files exist in the project)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Coverage reports
+coverage/
+htmlcov/
+
+# Distribution / packaging
+*.tar.gz
+*.whl
+*.egg-info/
+
+# System files
+*.swp
+*.swo
+
+# Additional common ignores
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Package manager specific
+package-lock.json
+yarn.lock
+
+# Runtime data
+pids
+*.pid
+*.seed
+
+# Debug files
+*.log
+
+# Testing
+coverage/
+.nyc_output/
+coverage.lcov
+
+# Node specific
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Browser extensions
+devtools.html
+
+# TypeScript
+*.tsbuildinfo
+
+# ONNX runtime binaries
+node_modules/onnxruntime-node/bin/
+
+# Sharp native modules
+node_modules/sharp/build/
+node_modules/sharp/src/
+node_modules/@img/sharp-linux-x64/
+
+```

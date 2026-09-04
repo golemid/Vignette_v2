@@ -60,7 +60,7 @@ const downloadFile = async (
   expectedSha256: string,
   directoryHandle: FileSystemDirectoryHandle,
   onProgress?: ProgressCallback,
-  signal?: AbortSignal
+  _signal?: AbortSignal
 ): Promise<void> => {
   const progressKey = `${modelId}:${fileName}`;
   
@@ -73,7 +73,7 @@ const downloadFile = async (
   }
   
   const controller = new AbortController();
-  const combinedSignal = signal ? AbortSignal.any([controller.signal, signal]) : controller.signal;
+  const combinedSignal = _signal ? AbortSignal.any([controller.signal, _signal]) : controller.signal;
   
   const download: ActiveDownload = {
     modelId,
@@ -212,7 +212,7 @@ const downloadFile = async (
         expectedSha256,
         directoryHandle,
         onProgress,
-        signal
+        _signal
       );
     }
     
