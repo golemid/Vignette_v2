@@ -9,7 +9,7 @@
  */
 
 import * as idb from '../utils/idb';
-import { type ModelEntry, getModelById } from './modelManifest';
+import { type ModelEntry, getModelById, MANIFEST_VERSION } from './modelManifest';
 import { deleteFile, replaceFile, computeSha256 } from './libraryManager';
 
 export interface DownloadProgress {
@@ -45,7 +45,7 @@ const downloadQueue: Array<{
   expectedSha256: string;
   directoryHandle: FileSystemDirectoryHandle;
   onProgress?: ProgressCallback;
-}>[] = [];
+}> = [];
 
 let processingQueue = false;
 
@@ -92,7 +92,7 @@ const downloadFile = async (
       headers['Range'] = `bytes=${startByte}-`;
     }
     
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       headers,
       signal: combinedSignal,
     });
@@ -120,7 +120,7 @@ const downloadFile = async (
     }
     
     const reader = response.body.getReader();
-    const chunks: Uint8Array[] = [];
+    const chunks: Uint8Array<ArrayBuffer>[] = [];
     let bytesDownloaded = startByte;
     let lastProgressUpdate = Date.now();
     
@@ -321,7 +321,7 @@ export const downloadModel = async (
       expectedSize: file.sizeBytes,
       expectedSha256: file.sha256,
       directoryHandle,
-      onProgress: (progress) => {
+      onProgress: (progress: DownloadProgress) => {
         // Aggregate progress for the whole model
         const totalModelBytes = model.files.reduce((sum, f) => sum + f.sizeBytes, 0);
         const aggregatedProgress: DownloadProgress = {
