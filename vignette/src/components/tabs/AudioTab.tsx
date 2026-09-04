@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useProjectStore, getHighQualityVoices } from '../../store/useStore';
+import { useProjectStore, getHighQualityVoices, defaultVoicePersonas } from '../../store/useStore';
 import { Mic, Music, Volume2, Waves, Play, Pause, Settings } from 'lucide-react';
 import './AudioTab.css';
 
@@ -25,6 +25,7 @@ export const AudioTab: React.FC = () => {
   
   const [isPlaying, setIsPlaying] = React.useState(false);
   const [systemVoices, setSystemVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [autoplayError, setAutoplayError] = useState<string | null>(null);
   
   // Load system voices on mount
   useEffect(() => {
@@ -167,12 +168,34 @@ export const AudioTab: React.FC = () => {
           </div>
         )}
         
+        {autoplayError && (
+          <div className="autoplay-error" style={{ 
+            padding: '0.75rem', 
+            background: 'var(--error)', 
+            borderRadius: '6px', 
+            marginBottom: '1rem',
+            color: '#fff'
+          }}>
+            {autoplayError}
+          </div>
+        )}
+        
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
           <button
             className="action-btn primary"
             onClick={() => {
-              setIsPlaying(true);
-              previewAudio();
+              setAutoplayError(null);
+              try {
+                previewAudio();
+                setIsPlaying(true);
+              } catch (error: any) {
+                if (error.name === 'NotAllowedError') {
+                  setAutoplayError('Please click the Play button again to enable audio.');
+                } else {
+                  setAutoplayError('Audio playback failed. Please try again.');
+                }
+                setIsPlaying(false);
+              }
             }}
             disabled={!narrationText}
             style={{ flex: 1 }}
@@ -186,6 +209,7 @@ export const AudioTab: React.FC = () => {
               className="action-btn secondary"
               onClick={() => {
                 setIsPlaying(false);
+                setAutoplayError(null);
                 stopAudio();
               }}
             >

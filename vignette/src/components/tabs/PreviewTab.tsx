@@ -1,6 +1,7 @@
 import React from 'react';
 import { useProjectStore } from '../../store/useStore';
 import { Play, Settings, AlertTriangle, CheckCircle, Download, Monitor } from 'lucide-react';
+import { renderTestVideo } from '../../utils/ffmpegRender';
 import './PreviewTab.css';
 
 export const PreviewTab: React.FC = () => {
@@ -10,6 +11,7 @@ export const PreviewTab: React.FC = () => {
     previewCodec,
     isPreviewReady,
     validationErrors,
+    mediaFiles,
     generatePreview,
     setPreviewSettings,
     validateProject,
@@ -17,6 +19,8 @@ export const PreviewTab: React.FC = () => {
   } = useProjectStore();
   
   const [showValidation, setShowValidation] = React.useState(false);
+  const [isTestRendering, setIsTestRendering] = React.useState(false);
+  const [testRenderError, setTestRenderError] = React.useState<string | null>(null);
   
   React.useEffect(() => {
     // Auto-generate preview on tab entry
@@ -35,6 +39,23 @@ export const PreviewTab: React.FC = () => {
       frameRate: previewFrameRate,
       codec: previewCodec,
     });
+  };
+  
+  const handleTestRender = async () => {
+    setTestRenderError(null);
+    setIsTestRendering(true);
+    
+    try {
+      // Get media files from store
+      const state = useProjectStore.getState();
+      await renderTestVideo(state.mediaFiles);
+      console.log('Test render completed successfully');
+    } catch (error: any) {
+      console.error('Test render failed:', error);
+      setTestRenderError(error.message || 'Test render failed. Please check console for details.');
+    } finally {
+      setIsTestRendering(false);
+    }
   };
   
   const resolutions = ['720p', '1080p', '4K'] as const;
@@ -222,10 +243,23 @@ export const PreviewTab: React.FC = () => {
       <div className="export-actions">
         <button
           className="action-btn secondary"
-          onClick={() => console.log('Test render first 5 seconds')}
+          onClick={handleTestRender}
+          disabled={isTestRendering || mediaFiles.length === 0}
         >
-          Test Render (5s)
+          {isTestRendering ? 'Rendering...' : 'Test Render (3s)'}
         </button>
+        
+        {testRenderError && (
+          <div className="test-render-error" style={{ 
+            padding: '0.75rem', 
+            background: 'var(--error)', 
+            borderRadius: '6px',
+            color: '#fff',
+            fontSize: '0.9rem'
+          }}>
+            {testRenderError}
+          </div>
+        )}
         
         <button
           className="action-btn primary large"
@@ -240,6 +274,12 @@ export const PreviewTab: React.FC = () => {
       {validationErrors.length > 0 && (
         <p className="export-warning">
           Please resolve validation errors before exporting
+        </p>
+      )}
+      
+      {mediaFiles.length === 0 && (
+        <p className="export-warning" style={{ marginTop: '0.5rem' }}>
+          ⚠️ Upload images to the Catalog before testing render
         </p>
       )}
     </div>

@@ -117,7 +117,7 @@ const defaultVoicePersonas: VoicePersona[] = [
 ];
 
 // Get available system voices from Web Speech API
-const getSystemVoices = (): SpeechSynthesisVoice[] => {
+export const getSystemVoices = (): SpeechSynthesisVoice[] => {
   if (typeof window !== 'undefined' && window.speechSynthesis) {
     return window.speechSynthesis.getVoices();
   }
@@ -125,7 +125,7 @@ const getSystemVoices = (): SpeechSynthesisVoice[] => {
 };
 
 // Filter for high-quality voices
-const getHighQualityVoices = (): SpeechSynthesisVoice[] => {
+export const getHighQualityVoices = (): SpeechSynthesisVoice[] => {
   const voices = getSystemVoices();
   // Prefer premium/high quality voices, filter by language
   return voices.filter(voice => 
@@ -205,6 +205,7 @@ interface ProjectActions {
   removeAudioTrack: (trackId: string) => void;
   setDucking: (enabled: boolean, depth?: number) => void;
   previewAudio: () => void;
+  stopAudio: () => void;
   
   // Preview Actions
   generatePreview: () => Promise<void>;
@@ -598,7 +599,15 @@ export const useProjectStore = create<ProjectState & ProjectActions>()(
         console.error('Speech synthesis error:', event);
       };
       
-      window.speechSynthesis.speak(utterance);
+      // Wrap speak in try-catch to handle autoplay policy errors
+      try {
+        window.speechSynthesis.speak(utterance);
+      } catch (error: any) {
+        if (error.name === 'NotAllowedError') {
+          throw new Error('Autoplay policy blocked audio. Please click Play again.');
+        }
+        throw error;
+      }
     },
     
     stopAudio: () => {
