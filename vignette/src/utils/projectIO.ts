@@ -182,7 +182,7 @@ export const importProject = async (): Promise<{
 /**
  * Validate project file schema
  */
-const validateProjectFile = (data: any): void => {
+export const validateProjectFile = (data: any): void => {
   if (!data.version) {
     throw new Error('Invalid project file: missing version');
   }

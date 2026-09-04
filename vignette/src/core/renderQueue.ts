@@ -5,18 +5,20 @@
  * Each item in the queue goes through: load → relink media → render → download → next.
  */
 
-import { relinkMedia } from '../utils/projectIO';
+import { relinkMedia, validateProjectFile, type VignetteProjectFile } from '../utils/projectIO';
 import { renderFullEDL, type RenderSettings as FFmpegRenderSettings } from '../utils/ffmpegRender';
 import type { EDLClip, AudioTrack, MediaFile } from '../store/useStore';
+import { useProjectStore } from '../store/useStore';
 
 export interface QueueItem {
   id: string;
   fileName: string;
+  fileHandle?: File; // Store File object for dynamic loading
   status: 'pending' | 'loading' | 'relinking' | 'rendering' | 'completed' | 'failed';
   progress: number; // 0-100
   error?: string;
   outputBlobUrl?: string;
-  projectData?: any; // Hydrated project data after import
+  projectData?: VignetteProjectFile; // Hydrated project data after import
 }
 
 interface RenderSettings {
@@ -59,6 +61,7 @@ export const addToQueue = async (file: File): Promise<string> => {
   const item: QueueItem = {
     id,
     fileName: file.name,
+    fileHandle: file, // Store the File object for later processing
     status: 'pending',
     progress: 0,
   };
@@ -112,12 +115,47 @@ export const getQueue = (): QueueItem[] => [...queue];
 export const getIsProcessing = (): boolean => isProcessing;
 
 /**
+ * Helper function to relink media for a specific project
+ */
+async function relinkMediaForProject(
+  projectData: VignetteProjectFile,
+  dirHandle: FileSystemDirectoryHandle
+): Promise<void> {
+  // Scan directory for files
+  const foundFiles: Map<string, File> = new Map();
+  
+  for await (const entry of dirHandle.values()) {
+    if (entry.kind === 'file') {
+      const file = await entry.getFile();
+      foundFiles.set(file.name, file);
+    }
+  }
+  
+  // Match found files to missing media references
+  const matchedFiles: File[] = [];
+  
+  for (const ref of projectData.mediaReferences || []) {
+    const file = foundFiles.get(ref.name);
+    if (file) {
+      matchedFiles.push(file);
+    }
+  }
+  
+  if (matchedFiles.length > 0) {
+    // Add matched files to store
+    const store = useProjectStore.getState();
+    await store.addMediaFiles(matchedFiles);
+    console.log(`Relinked ${matchedFiles.length} media files`);
+  }
+}
+
+/**
  * Start processing the queue sequentially
  */
 export const startQueue = async (
   settings: RenderSettings,
   onMediaFolderPick: () => Promise<FileSystemDirectoryHandle | null>,
-  _onProjectLoaded: (data: any) => void,
+  _onProjectLoaded: (data: VignetteProjectFile) => void,
   onDownload: (blob: Blob, filename: string) => void
 ): Promise<void> => {
   if (isProcessing) {
@@ -142,47 +180,80 @@ export const startQueue = async (
       currentItemId = item.id;
       
       try {
-        // Step 1: Load the .vignette file
+        // Step 1: Load and parse the .vignette file dynamically
         item.status = 'loading';
         item.progress = 10;
         notifyChange();
         
-        // We need the actual File object, not just the name
-        // This requires user to re-select the file or we store handles
-        console.log(`Loading project: ${item.fileName}`);
+        if (!item.fileHandle) {
+          throw new Error('No file handle available for queue item');
+        }
         
-        // Step 2: Prompt for media folder relinking
-        item.status = 'relinking';
+        // Read and parse the .vignette JSON file
+        const fileText = await item.fileHandle.text();
+        const projectData: VignetteProjectFile = JSON.parse(fileText);
+        
+        // Validate schema
+        validateProjectFile(projectData);
+        item.projectData = projectData;
         item.progress = 20;
         notifyChange();
         
-        const dirHandle = await onMediaFolderPick();
-        if (!dirHandle) {
-          throw new Error('Media folder selection cancelled');
+        console.log(`Project loaded: ${projectData.projectName}`);
+        
+        // Step 2: Prompt for media folder relinking if needed
+        const state = useProjectStore.getState();
+        const currentMediaNames = new Set(state.mediaFiles.map(m => m.name));
+        const missingMedia = projectData.mediaReferences
+          ? projectData.mediaReferences.filter(ref => !currentMediaNames.has(ref.name))
+          : [];
+        
+        if (missingMedia.length > 0) {
+          item.status = 'relinking';
+          item.progress = 30;
+          notifyChange();
+          
+          console.log(`Missing ${missingMedia.length} media files, prompting for folder...`);
+          
+          const dirHandle = await onMediaFolderPick();
+          if (!dirHandle) {
+            throw new Error('Media folder selection cancelled');
+          }
+          
+          // Perform relinking using the imported project data structure
+          await relinkMediaForProject(projectData, dirHandle);
+          item.progress = 50;
+          notifyChange();
+        } else {
+          item.progress = 50;
+          notifyChange();
         }
-        
-        // Perform relinking - simplified version that just scans directory
-        // In production you'd pass the actual project data
-        console.log('Relinking media files from selected directory...');
-        // Note: Full relinkMedia requires VignetteProjectFile, so we do a simplified scan here
-        // The actual relinking happens during project import
-        
-        item.progress = 40;
-        notifyChange();
         
         // Step 3: Render the project
         item.status = 'rendering';
-        item.progress = 50;
+        item.progress = 60;
         notifyChange();
         
-        // Get project data (would be loaded from file in real implementation)
         const edlClips: EDLClip[] = item.projectData?.edlClips || [];
-        const audioTracks: AudioTrack[] = item.projectData?.audioTracks || [];
-        const mediaFiles: MediaFile[] = item.projectData?.mediaFiles || [];
+        const audioTracksMeta = item.projectData?.audioTracksMetadata || [];
         
         if (edlClips.length === 0) {
           throw new Error('No EDL clips found in project');
         }
+        
+        // Convert audio track metadata to AudioTrack format (blobs should be relinked)
+        const audioTracks: AudioTrack[] = audioTracksMeta.map(t => ({
+          id: t.id,
+          name: t.name,
+          type: t.type,
+          volume: t.volume,
+          startTime: t.startTime,
+          duration: t.duration,
+          // blob would have been relinked via mediaFiles
+        }));
+        
+        // Get relinked media files from store
+        const mediaFiles: MediaFile[] = useProjectStore.getState().mediaFiles;
         
         // Convert settings to FFmpeg format
         const ffmpegSettings: FFmpegRenderSettings = {
@@ -200,7 +271,7 @@ export const startQueue = async (
           mediaFiles,
           audioTracks,
           (progress: number) => {
-            item.progress = 50 + Math.round(progress * 0.5); // 50-100%
+            item.progress = 60 + Math.round(progress * 0.4); // 60-100%
             notifyChange();
           }
         );

@@ -1,35 +1,44 @@
-```gitignore
+```
 # Dependencies
 node_modules/
 
-# Build outputs
+# Build artifacts
 dist/
 build/
-*.js.map
-*.ts.map
+target/
 
 # Environment variables
 .env
 .env.local
-*.env.*
+.env.*
 
-# IDE specific
+# Editor/IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
+*.tmp
+
+# Python specific
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
 # Logs
 *.log
 
-# Temp files
-*.tmp
-```
+# OS generated files
+.DS_Store
+Thumbs.db
 
-Wait, let me reconsider this. The file changes only include TypeScript/JavaScript source files (.ts, .tsx) which are not build artifacts or dependencies. According to rule #6, if the changes contain only source files and no build artifacts, dependencies, or temp files, I should output nothing.
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
 
-Since the modified files are only `ttsService.ts`, `AudioTab.tsx`, and `ffmpegRender.ts` - all source code files - no .gitignore entries are needed.
-
-```gitignore
-
+# Cache directories
+.mypy_cache/
+.pytest_cache/
+.gradle/
 ```
