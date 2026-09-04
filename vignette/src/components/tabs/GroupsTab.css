@@ -361,3 +361,142 @@
 .group-card[data-group-id]:has(.group-image.dragging) {
   background: rgba(0, 123, 255, 0.05);
 }
+
+/* Split Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-content h3 {
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.modal-content > p {
+  color: var(--text);
+  margin-bottom: 16px;
+}
+
+.split-selection {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.split-image-card {
+  aspect-ratio: 9/16;
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 3px solid transparent;
+  transition: all 0.2s;
+}
+
+.split-image-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.split-image-card.selected {
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.3);
+}
+
+.check-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  background: #007bff;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.2s;
+}
+
+.split-image-card.selected .check-indicator {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* Merge Toast */
+.merge-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #6f42c1;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 1001;
+}
+
+.merge-toast button {
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 4px 8px;
+}
+
+.merge-toast button:hover {
+  text-decoration: underline;
+}
+
+/* Danger button */
+.action-btn.danger {
+  background: #dc3545;
+  color: white;
+}
+
+.action-btn.danger:hover:not(:disabled) {
+  background: #c82333;
+}
+
+/* Selected state for merge button */
+.action-btn.selected {
+  background: #28a745;
+  color: white;
+}

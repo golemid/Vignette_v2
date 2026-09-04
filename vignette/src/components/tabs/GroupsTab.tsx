@@ -78,6 +78,9 @@ export const GroupsTab: React.FC = () => {
     visualStylePreset,
     generateGroups,
     updateGroup,
+    mergeGroups,
+    splitGroup,
+    removeGroup,
     setVisualStylePreset,
     setCurrentTab,
     isLoading,
@@ -86,6 +89,9 @@ export const GroupsTab: React.FC = () => {
   
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draggedImage, setDraggedImage] = useState<{ id: string; fromGroupId: string } | null>(null);
+  const [splitModalOpen, setSplitModalOpen] = useState<string | null>(null);
+  const [selectedForSplit, setSelectedForSplit] = useState<string[]>([]);
+  const [mergeSourceId, setMergeSourceId] = useState<string | null>(null);
   
   const images = mediaFiles.filter(f => f.type === 'image');
   const getImageById = (id: string) => images.find(img => img.id === id);
@@ -108,6 +114,46 @@ export const GroupsTab: React.FC = () => {
   const handleProceedToScript = () => {
     if (groups.length > 0) {
       setCurrentTab('script');
+    }
+  };
+
+  const handleSplitClick = (groupId: string) => {
+    setSplitModalOpen(groupId);
+    setSelectedForSplit([]);
+  };
+
+  const handleSplitConfirm = () => {
+    if (splitModalOpen && selectedForSplit.length >= 2) {
+      splitGroup(splitModalOpen, selectedForSplit);
+      setSplitModalOpen(null);
+      setSelectedForSplit([]);
+    }
+  };
+
+  const handleSplitToggle = (imageId: string) => {
+    setSelectedForSplit(prev => 
+      prev.includes(imageId) 
+        ? prev.filter(id => id !== imageId)
+        : [...prev, imageId]
+    );
+  };
+
+  const handleMergeClick = (groupId: string) => {
+    if (mergeSourceId === null) {
+      // First click - select source group
+      setMergeSourceId(groupId);
+    } else {
+      // Second click - merge with target
+      if (mergeSourceId !== groupId) {
+        mergeGroups(mergeSourceId, groupId);
+        setMergeSourceId(null);
+      }
+    }
+  };
+
+  const handleRemoveGroup = (groupId: string) => {
+    if (window.confirm(`Are you sure you want to remove "${groups.find(g => g.id === groupId)?.name}"? Images will return to ungrouped state.`)) {
+      removeGroup(groupId);
     }
   };
 
@@ -324,34 +370,26 @@ export const GroupsTab: React.FC = () => {
                 
                 <div className="group-actions">
                   <button
+                    className={`action-btn small ${mergeSourceId === group.id ? 'selected' : ''}`}
+                    onClick={() => handleMergeClick(group.id)}
+                    title={mergeSourceId === null ? "Select this group to merge with another" : mergeSourceId === group.id ? "Cancel selection" : "Merge with selected group"}
+                    disabled={groups.length <= 1}
+                  >
+                    <Merge size={16} />
+                    {mergeSourceId === group.id ? 'Selected' : 'Merge'}
+                  </button>
+                  <button
                     className="action-btn small"
-                    onClick={() => {
-                      // In a real app, this would open a modal to select images to split
-                      console.log('Split group:', group.id);
-                    }}
-                    title="Split group"
+                    onClick={() => handleSplitClick(group.id)}
+                    title="Split group - select images to move to new group"
+                    disabled={group.imageIds.length < 4}
                   >
                     <Split size={16} />
                     Split
                   </button>
                   <button
-                    className="action-btn small"
-                    onClick={() => {
-                      // In a real app, this would allow selecting another group to merge
-                      console.log('Merge group:', group.id);
-                    }}
-                    title="Merge with another group"
-                    disabled={groups.length <= 1}
-                  >
-                    <Merge size={16} />
-                    Merge
-                  </button>
-                  <button
-                    className="action-btn small"
-                    onClick={() => {
-                      // Remove group and return images to ungrouped
-                      console.log('Remove group:', group.id);
-                    }}
+                    className="action-btn small danger"
+                    onClick={() => handleRemoveGroup(group.id)}
                     title="Remove group"
                   >
                     <Plus size={16} className="rotate-45" />
@@ -414,6 +452,61 @@ export const GroupsTab: React.FC = () => {
           })()
         ) : null}
       </DragOverlay>
+
+      {/* Split Modal */}
+      {splitModalOpen && (
+        <div className="modal-overlay" onClick={() => setSplitModalOpen(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>Split Group</h3>
+            <p>Select at least 2 images to move to a new group:</p>
+            <div className="split-selection">
+              {(() => {
+                const group = groups.find(g => g.id === splitModalOpen);
+                if (!group) return null;
+                return group.imageIds.map((imageId) => {
+                  const image = getImageById(imageId);
+                  if (!image) return null;
+                  const isSelected = selectedForSplit.includes(imageId);
+                  return (
+                    <div
+                      key={imageId}
+                      className={`split-image-card ${isSelected ? 'selected' : ''}`}
+                      onClick={() => handleSplitToggle(imageId)}
+                    >
+                      {image.proxyUrl && <img src={image.proxyUrl} alt={image.name} />}
+                      <div className="check-indicator">{isSelected && '✓'}</div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+            <div className="modal-actions">
+              <button
+                className="action-btn secondary"
+                onClick={() => setSplitModalOpen(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="action-btn primary"
+                onClick={handleSplitConfirm}
+                disabled={selectedForSplit.length < 2}
+              >
+                Split ({selectedForSplit.length} selected)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Merge Status Toast */}
+      {mergeSourceId && (
+        <div className="merge-toast">
+          <Merge size={16} />
+          <span>Select another group to merge with</span>
+          <button onClick={() => setMergeSourceId(null)}>Cancel</button>
+        </div>
+      )}
     </div>
     </DndContext>
   );
