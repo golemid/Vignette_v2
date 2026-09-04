@@ -1,15 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useProjectStore, getHighQualityVoices, defaultVoicePersonas } from '../../store/useStore';
-import { Mic, Music, Volume2, Waves, Play, Pause, Settings } from 'lucide-react';
+import { Mic, Music, Volume2, Waves, Play, Pause, Settings, AlertCircle } from 'lucide-react';
+import { generateNarration as generateRealNarration, generateFallbackNarration } from '../../ai/services/textService';
+import { synthesizeSpeech, getTTSPersonas } from '../../ai/services/ttsService';
 import './AudioTab.css';
 
 export const AudioTab: React.FC = () => {
   const { 
     narrationText,
+    edlClips,
     selectedVoice,
     audioTracks,
     duckingEnabled,
     duckingDepth,
+    thematicScript,
+    scriptKeywords,
     generateNarration,
     updateNarrationText,
     selectVoice,
@@ -20,12 +25,14 @@ export const AudioTab: React.FC = () => {
     stopAudio,
     setCurrentTab,
     isLoading,
-    executionMode
+    executionMode,
+    aiStatus
   } = useProjectStore();
   
   const [isPlaying, setIsPlaying] = React.useState(false);
   const [systemVoices, setSystemVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [autoplayError, setAutoplayError] = useState<string | null>(null);
+  const [isGeneratingTTS, setIsGeneratingTTS] = useState(false);
   
   // Load system voices on mount
   useEffect(() => {
@@ -43,7 +50,74 @@ export const AudioTab: React.FC = () => {
   }, []);
   
   const handleGenerateNarration = async () => {
-    await generateNarration();
+    if (edlClips.length === 0) return;
+    
+    try {
+      let result;
+      
+      if (aiStatus === 'ready') {
+        // Use real AI narration generation
+        result = await generateRealNarration(edlClips, thematicScript, scriptKeywords);
+      } else {
+        // Fallback
+        result = generateFallbackNarration(edlClips, thematicScript);
+      }
+      
+      // Update store
+      const { set } = useProjectStore.getState();
+      if (set) {
+        set((s: any) => {
+          s.narrationText = result.narration;
+        });
+      }
+    } catch (error: any) {
+      console.error('Narration generation failed:', error);
+      // Fallback
+      const fallbackResult = generateFallbackNarration(edlClips, thematicScript);
+      const { set } = useProjectStore.getState();
+      if (set) {
+        set((s: any) => {
+          s.narrationText = fallbackResult.narration;
+        });
+      }
+    }
+  };
+  
+  const handleSynthesizeTTS = async () => {
+    if (!narrationText.trim()) return;
+    
+    setIsGeneratingTTS(true);
+    
+    try {
+      const personas = getTTSPersonas();
+      const persona = selectedVoice ? personas.find(p => p.id === selectedVoice.id) || personas[0] : personas[0];
+      
+      const result = await synthesizeSpeech(narrationText, persona);
+      
+      // Add audio track with the synthesized blob
+      const { set } = useProjectStore.getState();
+      if (set) {
+        set((s: any) => {
+          s.audioTracks = [
+            ...s.audioTracks,
+            {
+              id: `tts_${Date.now()}`,
+              name: 'AI Narration',
+              type: 'narration' as const,
+              volume: 1.0,
+              startTime: 0,
+              duration: result.duration,
+              sourceBlob: result.audioBlob,
+            },
+          ];
+        });
+      }
+    } catch (error: any) {
+      console.error('TTS synthesis failed:', error);
+      setAutoplayError('Failed to synthesize narration. Using fallback.');
+    } finally {
+      setIsGeneratingTTS(false);
+    }
   };
   
   const handleProceedToPreview = () => {

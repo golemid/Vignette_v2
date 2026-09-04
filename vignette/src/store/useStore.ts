@@ -95,6 +95,10 @@ export interface ProjectState {
   isLoading: boolean;
   validationErrors: string[];
   _initialized: boolean;
+  // AI Library state
+  aiStatus: 'not-installed' | 'installing' | 'ready' | 'skipped' | 'error';
+  aiManifestVersion: string | null;
+  aiModelProgress: Record<string, { percent: number; status: string; error?: string }>;
 }
 
 const defaultVoicePersonas: VoicePersona[] = [
@@ -147,6 +151,9 @@ const initialState: ProjectState = {
   isLoading: false,
   validationErrors: [],
   _initialized: false,
+  aiStatus: 'not-installed',
+  aiManifestVersion: null,
+  aiModelProgress: {},
 };
 
 interface ProjectActions {
@@ -185,6 +192,10 @@ interface ProjectActions {
   setLoading: (loading: boolean) => void;
   addValidationError: (error: string) => void;
   clearValidationErrors: () => void;
+  // AI actions
+  setAIStatus: (status: ProjectState['aiStatus']) => void;
+  setAIManifestVersion: (version: string) => void;
+  updateAIModelProgress: (modelId: string, progress: { percent: number; status: string; error?: string }) => void;
 }
 
 const activeObjectUrls: Set<string> = new Set();
@@ -274,6 +285,22 @@ export const useProjectStore = create<ProjectState & ProjectActions>()(
     setLoading: () => {},
     addValidationError: () => {},
     clearValidationErrors: () => {},
+    // AI actions
+    setAIStatus: (status) => {
+      set((s) => {
+        s.aiStatus = status;
+      });
+    },
+    setAIManifestVersion: (version) => {
+      set((s) => {
+        s.aiManifestVersion = version;
+      });
+    },
+    updateAIModelProgress: (modelId, progress) => {
+      set((s) => {
+        s.aiModelProgress[modelId] = progress;
+      });
+    },
   }))
 );
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useProjectStore } from '../../store/useStore';
-import { Wand2, Clock, Type, Check, Edit3 } from 'lucide-react';
+import { Wand2, Clock, Type, Check, Edit3, AlertCircle } from 'lucide-react';
+import { generateEDL as generateRealEDL, generateFallbackEDL } from '../../ai/services/textService';
 import './ScriptTab.css';
 
 export const ScriptTab: React.FC = () => {
@@ -15,14 +16,45 @@ export const ScriptTab: React.FC = () => {
     approveScript,
     setCurrentTab,
     isLoading,
-    executionMode
+    executionMode,
+    aiStatus
   } = useProjectStore();
   
   const [editingClip, setEditingClip] = useState<string | null>(null);
   const [localDuration, setLocalDuration] = useState<number>(0);
   
   const handleGenerateEDL = async () => {
-    await generateEDL();
+    if (groups.length === 0) return;
+    
+    try {
+      let result;
+      
+      if (aiStatus === 'ready') {
+        // Use real AI EDL generation
+        result = await generateRealEDL(groups, scriptKeywords, thematicScript);
+      } else {
+        // Fallback to simple generation
+        result = generateFallbackEDL(groups);
+      }
+      
+      // Update store with generated clips
+      const { set } = useProjectStore.getState();
+      if (set) {
+        set((s: any) => {
+          s.edlClips = result.clips;
+        });
+      }
+    } catch (error: any) {
+      console.error('EDL generation failed:', error);
+      // Fallback
+      const fallbackResult = generateFallbackEDL(groups);
+      const { set } = useProjectStore.getState();
+      if (set) {
+        set((s: any) => {
+          s.edlClips = fallbackResult.clips;
+        });
+      }
+    }
   };
   
   const handleProceedToAudio = () => {
