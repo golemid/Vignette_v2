@@ -1,4 +1,5 @@
-import { useProjectStore } from './store/useStore';
+import { useEffect } from 'react';
+import { useProjectStore, cleanupStore } from './store/useStore';
 import { CatalogTab } from './components/tabs/CatalogTab';
 import { GroupsTab } from './components/tabs/GroupsTab';
 import { ScriptTab } from './components/tabs/ScriptTab';
@@ -10,17 +11,44 @@ import { FileImage, FolderTree, FileText, Music, PlaySquare, Settings, Terminal 
 import './App.css';
 
 function App() {
-  const { currentTab, setCurrentTab, projectName } = useProjectStore();
+  const { 
+    currentTab, 
+    setCurrentTab, 
+    projectName,
+    mediaFiles,
+    groups,
+    edlClips,
+    narrationText,
+    audioTracks,
+    initializeFromDB
+  } = useProjectStore();
+  
+  // Initialize from IndexedDB on mount
+  useEffect(() => {
+    initializeFromDB();
+    
+    // Cleanup Object URLs on unmount
+    return () => {
+      cleanupStore();
+    };
+  }, [initializeFromDB]);
   
   const tabs = [
-    { id: 'catalog', label: 'Catalog', icon: FileImage },
-    { id: 'groups', label: 'Groups', icon: FolderTree },
-    { id: 'script', label: 'Script', icon: FileText },
-    { id: 'audio', label: 'Audio', icon: Music },
-    { id: 'preview', label: 'Preview', icon: PlaySquare },
-    { id: 'project', label: 'Project', icon: Settings },
-    { id: 'terminal', label: 'Terminal', icon: Terminal },
+    { id: 'catalog', label: 'Catalog', icon: FileImage, disabled: false },
+    { id: 'groups', label: 'Groups', icon: FolderTree, disabled: mediaFiles.length === 0 },
+    { id: 'script', label: 'Script', icon: FileText, disabled: groups.length === 0 },
+    { id: 'audio', label: 'Audio', icon: Music, disabled: edlClips.length === 0 },
+    { id: 'preview', label: 'Preview', icon: PlaySquare, disabled: edlClips.length === 0 && narrationText.length === 0 && audioTracks.length === 0 },
+    { id: 'project', label: 'Project', icon: Settings, disabled: false },
+    { id: 'terminal', label: 'Terminal', icon: Terminal, disabled: false },
   ] as const;
+  
+  const handleTabClick = (tabId: string) => {
+    const tab = tabs.find(t => t.id === tabId);
+    if (tab && !tab.disabled) {
+      setCurrentTab(tabId as any);
+    }
+  };
   
   const renderTab = () => {
     switch (currentTab) {
@@ -55,11 +83,13 @@ function App() {
         <nav className="tab-navigation">
           {tabs.map(tab => {
             const Icon = tab.icon;
+            const isActive = currentTab === tab.id;
             return (
               <button
                 key={tab.id}
-                className={`nav-tab ${currentTab === tab.id ? 'active' : ''}`}
-                onClick={() => setCurrentTab(tab.id)}
+                className={`nav-tab ${isActive ? 'active' : ''} ${tab.disabled ? 'disabled' : ''}`}
+                onClick={() => handleTabClick(tab.id)}
+                title={tab.disabled ? `Complete "${tabs.find((t, i) => i < tabs.findIndex(x => x.id === tab.id) && t.id !== 'project' && t.id !== 'terminal' && !t.disabled)?.label || 'previous steps'}" first` : ''}
               >
                 <Icon size={18} />
                 <span>{tab.label}</span>
