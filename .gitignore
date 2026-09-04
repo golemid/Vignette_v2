@@ -1,16 +1,43 @@
 ```
 # Dependencies
 node_modules/
+package-lock.json
 
 # Environment
 .env
 .env.local
-.env.*
+*.env.*
 
-# Logs and temp files
+# Build artifacts
+dist/
+build/
+target/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.venv.bak/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
 *.log
-*.tmp
-
-# Editors
-.vscode/
+*.pot
+*.pyc
+*.pyo
+*.pyd
+.MF
+.TemporaryItems
+.trash
 ```
