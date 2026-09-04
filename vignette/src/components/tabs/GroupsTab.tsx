@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useProjectStore } from '../../store/useStore';
-import { Sparkles, GripVertical, Plus, Split, Merge, Check } from 'lucide-react';
+import { Sparkles, GripVertical, Plus, Split, Merge, Check, AlertCircle } from 'lucide-react';
 import type {
   DragStartEvent,
   DragEndEvent,
@@ -23,6 +23,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { clusterImages } from '../../ai/services/visionService';
 import './GroupsTab.css';
 
 interface SortableImageProps {
@@ -108,7 +109,26 @@ export const GroupsTab: React.FC = () => {
   );
   
   const handleRegroup = async () => {
-    await generateGroups();
+    if (images.length === 0) return;
+    
+    try {
+      // Use AI vision service for real clustering
+      const newGroups = await clusterImages(images, 5);
+      
+      // Update store with new groups
+      // Note: In a real implementation, generateGroups would be replaced entirely
+      // For now we directly update the groups state
+      const { set } = useProjectStore.getState();
+      if (set) {
+        set((s: any) => {
+          s.groups = newGroups;
+        });
+      }
+    } catch (error: any) {
+      console.error('AI clustering failed:', error);
+      // Fallback to existing simulation
+      await generateGroups();
+    }
   };
   
   const handleProceedToScript = () => {
