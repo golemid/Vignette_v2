@@ -189,6 +189,8 @@ interface ProjectActions {
   setVisualStylePreset: (preset: string) => void;
   generateEDL: () => Promise<void>;
   updateEDLClip: (clipId: string, updates: Partial<EDLClip>) => void;
+  removeEDLClip: (clipId: string) => void;
+  swapEDLClips: (index1: number, index2: number) => void;
   setScriptKeywords: (keywords: string) => void;
   approveScript: () => void;
   generateNarration: () => Promise<void>;
@@ -291,7 +293,34 @@ export const useProjectStore = create<ProjectState & ProjectActions>()(
       moveImageBetweenGroups: () => {},
       setVisualStylePreset: () => {},
       generateEDL: async () => {},
-      updateEDLClip: () => {},
+      updateEDLClip: (clipId, updates) => {
+        set((s) => {
+          const index = s.edlClips.findIndex(c => c.id === clipId);
+          if (index !== -1) {
+            s.edlClips[index] = { ...s.edlClips[index], ...updates };
+          }
+        });
+      },
+      removeEDLClip: (clipId) => {
+        set((s) => {
+          s.edlClips = s.edlClips.filter(c => c.id !== clipId);
+        });
+      },
+      swapEDLClips: (index1, index2) => {
+        set((s) => {
+          const newClips = [...s.edlClips];
+          const temp = newClips[index1];
+          newClips[index1] = newClips[index2];
+          newClips[index2] = temp;
+          // Recalculate start times after swap
+          let currentTime = 0;
+          newClips.forEach(clip => {
+            clip.startTime = currentTime;
+            currentTime += clip.duration;
+          });
+          s.edlClips = newClips;
+        });
+      },
       setScriptKeywords: () => {},
       approveScript: () => {},
       generateNarration: async () => {},

@@ -37,10 +37,14 @@ export const PreviewTab: React.FC = () => {
     const caps = checkWasmCapabilities();
     setWasmInfo(caps);
     console.log(`WASM Capabilities: SharedArrayBuffer=${caps.sharedArrayBuffer}, Multi-threaded=${caps.multiThreaded}`);
-    
-    // Auto-generate preview on tab entry
-    handleRender();
   }, []);
+
+  useEffect(() => {
+    // Auto-generate preview when settings change (not on every tab switch)
+    if (!videoUrl && !isRendering && edlClips.length > 0) {
+      handleRender();
+    }
+  }, [previewResolution, previewFrameRate, previewCodec]);
   
   useEffect(() => {
     // Cleanup video URL on unmount

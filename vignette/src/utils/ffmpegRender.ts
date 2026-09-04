@@ -5,7 +5,7 @@ import * as idb from './idb';
 
 let ffmpegInstance: FFmpeg | null = null;
 
-interface RenderSettings {
+export interface RenderSettings {
   resolution: '720p' | '1080p' | '4K';
   frameRate: 24 | 30 | 60;
   codec: 'h264' | 'h265';
@@ -158,7 +158,7 @@ const getImageBlob = async (imageId: string, mediaFiles: MediaFile[]): Promise<B
       return dbRecord.file;
     }
   } catch (_e) {
-    console.warn(`Failed to get original from IndexedDB for ${imageId}:`, e);
+    console.warn(`Failed to get original from IndexedDB for ${imageId}`);
   }
   
   // Fall back to mediaFiles array (may be proxy or original File)
@@ -423,7 +423,7 @@ export const renderFullEDL = async (
           await ffmpeg.deleteFile(filename);
           console.log(`Deleted FFmpeg FS file: ${filename}`);
         } catch (_e) {
-          console.warn(`Failed to delete ${filename}:`, e);
+          console.warn(`Failed to delete ${filename}`);
         }
       }
       
@@ -470,8 +470,153 @@ export const renderTestVideo = async (
   };
   
   const blobUrl = await renderFullEDL(testClips, settings, mediaFiles, audioTracks, onProgress);
-  console.log(`Smoke test complete. Video URL: ${blobUrl}`);
+  console.log('Smoke test complete:', blobUrl);
   return blobUrl;
+};
+
+/**
+ * Render an isolated transition between two clips for preview
+ * Builds a minimal filtergraph with just the xfade transition and typography
+ */
+export const renderIsolatedTransition = async (
+  clipA: EDLClip,
+  clipB: EDLClip,
+  transitionDuration: number = 0.5,
+  mediaFiles: MediaFile[],
+  settings: RenderSettings
+): Promise<string> => {
+  const ffmpeg = await getFFmpeg();
+  const cleanupFiles: string[] = [];
+  
+  try {
+    console.log(`Rendering isolated transition: ${clipA.id} -> ${clipB.id}`);
+    
+    // Get image blobs for both clips
+    const blobA = await getImageBlob(clipA.imageId, mediaFiles);
+    const blobB = await getImageBlob(clipB.imageId, mediaFiles);
+    
+    if (!blobA || !blobB) {
+      throw new Error('Missing image blobs for transition preview');
+    }
+    
+    // Resolve target resolution
+    const targetRes = resolveResolution(settings.resolution, '16:9');
+    const targetWidth = targetRes.width;
+    const targetHeight = targetRes.height;
+    const targetFps = settings.frameRate;
+    
+    // Write input files
+    await ffmpeg.writeFile('input_a.jpg', await fetchFile(blobA));
+    await ffmpeg.writeFile('input_b.jpg', await fetchFile(blobB));
+    cleanupFiles.push('input_a.jpg', 'input_b.jpg');
+    
+    // Build filter graph for isolated transition
+    // Each clip shows for 1 second, then transition overlaps
+    const clipDuration = 1.5; // Show each clip for 1.5s before transition
+    
+    // Process clip A
+    const filtersA = [
+      `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2`,
+      buildZoompanFilter(clipA.focalPoint, clipA.motionPath, clipDuration + transitionDuration, targetFps),
+      `trim=duration=${clipDuration + transitionDuration}`,
+    ];
+    
+    // Add typography for clip A if present
+    if (clipA.typography && clipA.typography.text) {
+      filtersA.push(buildDrawtextFilter(
+        clipA.typography.text,
+        clipA.typography.position,
+        clipA.typography.duration,
+        0,
+        targetWidth,
+        targetHeight
+      ));
+    }
+    
+    // Process clip B
+    const filtersB = [
+      `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2`,
+      buildZoompanFilter(clipB.focalPoint, clipB.motionPath, clipDuration + transitionDuration, targetFps),
+      `trim=duration=${clipDuration + transitionDuration}`,
+    ];
+    
+    // Add typography for clip B if present
+    if (clipB.typography && clipB.typography.text) {
+      filtersB.push(buildDrawtextFilter(
+        clipB.typography.text,
+        clipB.typography.position,
+        clipB.typography.duration,
+        0,
+        targetWidth,
+        targetHeight
+      ));
+    }
+    
+    const transitionType = clipA.transitions?.length > 0 
+      ? mapTransitionType(clipA.transitions[0].type)
+      : 'fade';
+    
+    // Build filter complex
+    const filterA = filtersA.join(',');
+    const filterB = filtersB.join(',');
+    
+    const filterComplex = `[0:v]${filterA}[a];[1:v]${filterB}[b];[a][b]xfade=transition=${transitionType}:duration=${transitionDuration}:offset=${clipDuration}[outv]`;
+    
+    console.log('Isolated transition filter graph:');
+    console.log(filterComplex);
+    
+    // Execute FFmpeg
+    const args = [
+      '-i', 'input_a.jpg',
+      '-i', 'input_b.jpg',
+      '-filter_complex', filterComplex,
+      '-map', '[outv]',
+      '-c:v', settings.codec === 'h265' ? 'libx265' : 'libx264',
+      '-pix_fmt', 'yuv420p',
+      '-r', targetFps.toString(),
+      '-t', (clipDuration * 2 + transitionDuration).toString(),
+      'transition_preview.mp4'
+    ];
+    
+    await ffmpeg.exec(args);
+    
+    // Read output
+    const outputData = await ffmpeg.readFile('transition_preview.mp4');
+    let blob: Blob;
+    if (outputData instanceof Uint8Array) {
+      const bytes = new Uint8Array(outputData.length);
+      bytes.set(outputData);
+      blob = new Blob([bytes], { type: 'video/mp4' });
+    } else {
+      blob = new Blob([new TextEncoder().encode(outputData as string)], { type: 'video/mp4' });
+    }
+    
+    const url = URL.createObjectURL(blob);
+    console.log(`Transition preview complete: ${url.substring(0, 50)}...`);
+    
+    return url;
+    
+  } catch (error: any) {
+    console.error('Isolated transition render error:', error);
+    throw new Error(`Transition preview failed: ${error.message}`);
+  } finally {
+    // Cleanup
+    const ffmpeg = ffmpegInstance;
+    if (ffmpeg) {
+      for (const filename of cleanupFiles) {
+        try {
+          await ffmpeg.deleteFile(filename);
+        } catch (_e) {
+          // Ignore cleanup errors
+        }
+      }
+      try {
+        await ffmpeg.deleteFile('transition_preview.mp4');
+      } catch (_e) {
+        // Output may not exist
+      }
+    }
+  }
 };
 
 /**

@@ -3,6 +3,7 @@
  * 
  * Uses the TTS model to synthesize narration audio.
  * Applies persona customization (pitch, speed) via Web Audio offline rendering.
+ * Supports custom pause tokens [PAUSE Xs] for inserting silence.
  */
 
 import { getAIBridge } from '../aiBridge';
@@ -29,7 +30,65 @@ const defaultPersonas: TTSPersona[] = [
 export const getTTSPersonas = (): TTSPersona[] => defaultPersonas;
 
 /**
+ * Parse text for pause tokens and return segments
+ * Format: [PAUSE 1.5s] or [PAUSE 2s]
+ */
+interface TextSegment {
+  type: 'text' | 'pause';
+  content: string;
+  duration?: number; // for pause segments, duration in seconds
+}
+
+export const parsePauseTokens = (text: string): TextSegment[] => {
+  const pauseRegex = /\[PAUSE\s+(\d+(?:\.\d+)?)s?\]/gi;
+  const segments: TextSegment[] = [];
+  let lastIndex = 0;
+  
+  let match;
+  while ((match = pauseRegex.exec(text)) !== null) {
+    // Add text before the pause token
+    if (match.index > lastIndex) {
+      const textBefore = text.substring(lastIndex, match.index).trim();
+      if (textBefore) {
+        segments.push({ type: 'text', content: textBefore });
+      }
+    }
+    
+    // Add pause segment
+    const pauseDuration = parseFloat(match[1]);
+    segments.push({ type: 'pause', content: `[PAUSE ${pauseDuration}s]`, duration: pauseDuration });
+    
+    lastIndex = match.index + match[0].length;
+  }
+  
+  // Add remaining text after last pause token
+  if (lastIndex < text.length) {
+    const remainingText = text.substring(lastIndex).trim();
+    if (remainingText) {
+      segments.push({ type: 'text', content: remainingText });
+    }
+  }
+  
+  // If no segments found, treat entire text as one segment
+  if (segments.length === 0 && text.trim()) {
+    segments.push({ type: 'text', content: text.trim() });
+  }
+  
+  return segments;
+};
+
+/**
+ * Generate silence audio buffer for a given duration
+ */
+const generateSilenceBuffer = async (duration: number, sampleRate: number = 44100): Promise<AudioBuffer> => {
+  const audioContext = new OfflineAudioContext(1, Math.floor(sampleRate * duration), sampleRate);
+  // Create silent buffer (already initialized to 0)
+  return audioContext.createBuffer(1, Math.floor(sampleRate * duration), sampleRate);
+};
+
+/**
  * Synthesize speech from text using the TTS model
+ * Handles pause tokens by splitting text and concatenating with silence
  */
 export const synthesizeSpeech = async (
   text: string,
@@ -45,17 +104,78 @@ export const synthesizeSpeech = async (
     const pitch = persona?.pitch ?? 1.0;
     const speed = persona?.speed ?? 1.0;
     
-    const result = await bridge.synthesizeSpeech(text, pitch, speed);
+    // Parse text for pause tokens
+    const segments = parsePauseTokens(text);
     
-    if (!result.audioBlob || !(result.audioBlob instanceof Blob)) {
-      throw new Error('Invalid audio blob returned from TTS');
+    if (segments.length === 0) {
+      throw new Error('No valid text segments found');
     }
     
-    // Get duration from audio metadata
-    const duration = await getAudioDuration(result.audioBlob);
+    // If only one text segment and no pauses, use simple synthesis
+    if (segments.length === 1 && segments[0].type === 'text') {
+      const result = await bridge.synthesizeSpeech(segments[0].content, pitch, speed);
+      
+      if (!result.audioBlob || !(result.audioBlob instanceof Blob)) {
+        throw new Error('Invalid audio blob returned from TTS');
+      }
+      
+      const duration = await getAudioDuration(result.audioBlob);
+      
+      return {
+        audioBlob: result.audioBlob,
+        duration,
+      };
+    }
+    
+    // Multiple segments: synthesize each and concatenate with silence
+    const audioContext = new OfflineAudioContext(1, 44100 * 300, 44100); // 5 minutes max
+    const audioBuffers: AudioBuffer[] = [];
+    
+    for (const segment of segments) {
+      if (segment.type === 'pause') {
+        // Generate silence for this pause
+        const silenceBuffer = await generateSilenceBuffer(segment.duration!, audioContext.sampleRate);
+        audioBuffers.push(silenceBuffer);
+        console.log(`Inserted ${segment.duration}s pause`);
+      } else {
+        // Synthesize this text segment
+        const result = await bridge.synthesizeSpeech(segment.content, pitch, speed);
+        
+        if (!result.audioBlob || !(result.audioBlob instanceof Blob)) {
+          throw new Error('Invalid audio blob returned from TTS');
+        }
+        
+        const arrayBuffer = await result.audioBlob.arrayBuffer();
+        const decodedBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+        audioBuffers.push(decodedBuffer);
+      }
+    }
+    
+    // Calculate total length needed
+    const totalSamples = audioBuffers.reduce((sum, buf) => sum + buf.length, 0);
+    
+    // Create output buffer
+    const outputBuffer = audioContext.createBuffer(1, totalSamples, audioContext.sampleRate);
+    let offset = 0;
+    
+    // Concatenate all buffers
+    for (const buffer of audioBuffers) {
+      const channelData = outputBuffer.getChannelData(0);
+      const sourceData = buffer.getChannelData(0);
+      
+      for (let i = 0; i < buffer.length; i++) {
+        channelData[offset + i] = sourceData[i];
+      }
+      
+      offset += buffer.length;
+    }
+    
+    // Convert to WAV blob
+    const wavBlob = bufferToWav(outputBuffer);
+    const duration = totalSamples / audioContext.sampleRate;
     
     return {
-      audioBlob: result.audioBlob,
+      audioBlob: wavBlob,
       duration,
     };
   } catch (error: any) {

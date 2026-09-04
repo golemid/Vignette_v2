@@ -26,7 +26,9 @@ export const ScriptTab: React.FC = () => {
     setCurrentTab,
     isLoading,
     executionMode,
-    aiStatus
+    aiStatus,
+    removeEDLClip,
+    swapEDLClips
   } = useProjectStore();
   
   const [editingClip, setEditingClip] = useState<string | null>(null);
