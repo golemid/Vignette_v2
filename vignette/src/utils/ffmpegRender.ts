@@ -158,7 +158,7 @@ const getImageBlob = async (imageId: string, mediaFiles: MediaFile[]): Promise<B
       return dbRecord.file;
     }
   } catch (_e) {
-    console.warn(`Failed to get original from IndexedDB for ${imageId}:`, e);
+    console.warn(`Failed to get original from IndexedDB for ${imageId}`);
   }
   
   // Fall back to mediaFiles array (may be proxy or original File)
@@ -423,7 +423,7 @@ export const renderFullEDL = async (
           await ffmpeg.deleteFile(filename);
           console.log(`Deleted FFmpeg FS file: ${filename}`);
         } catch (_e) {
-          console.warn(`Failed to delete ${filename}:`, e);
+          console.warn(`Failed to delete ${filename}`);
         }
       }
       
