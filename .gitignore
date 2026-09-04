@@ -1,12 +1,17 @@
-```
+```gitignore
 # Dependencies
 node_modules/
 
-# Build artifacts
+# Build outputs
 dist/
 build/
-*.js.map
-*.css.map
+*.js
+*.ts
+*.tsx
+
+# Logs and temp files
+*.log
+*.tmp
 
 # Environment
 .env
@@ -19,22 +24,18 @@ build/
 *.swp
 *.swo
 
-# Logs
-*.log
-
-# Temp files
-*.tmp
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
 # Coverage
 coverage/
 htmlcov/
 .coverage
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# Distribution / packaging
 .Python
 env/
 venv/
@@ -42,43 +43,16 @@ venv/
 pip-log.txt
 pip-delete-this-directory.txt
 .tox/
-.coverage
-.nox/
-.pytest_cache/
-.mypy_cache/
-
-# Compiled
-*.o
-*.obj
-*.a
-*.lib
-*.so
-*.dll
-*.dylib
-*.exe
-*.out
-
-# Compressed
-*.zip
-*.gz
-*.tar
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
-*.lz4
-*.lzh
-*.cab
-*.arj
-*.rpm
-*.deb
-*.Z
-*.lz
-*.lzo
-
-# System
+.coverage*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
 .DS_Store
 Thumbs.db
 ```

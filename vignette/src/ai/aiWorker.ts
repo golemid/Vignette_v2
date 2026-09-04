@@ -35,7 +35,7 @@ const sendProgress = (taskId: string, progress: any) => {
 
 const sendResult = (taskId: string, result: any, transferables?: Transferable[]) => {
   if (transferables && transferables.length > 0) {
-    self.postMessage({ taskId, status: 'result', data: result }, transferables);
+    self.postMessage({ taskId, status: 'result', data: result }, { transfer: transferables } as any);
   } else {
     sendResponse({ taskId, status: 'result', data: result });
   }
@@ -48,8 +48,8 @@ const sendError = (taskId: string, error: string) => {
 // Initialize pipelines on first use
 const initVisionPipeline = async () => {
   if (!visionPipeline) {
-    // Dynamic import of Transformers.js
-    const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0-alpha.12');
+    // Dynamic import of Transformers.js - using bare specifier for bundler resolution
+    const { pipeline } = await import('@huggingface/transformers');
     
     visionPipeline = await pipeline(
       'feature-extraction',
@@ -65,7 +65,7 @@ const initVisionPipeline = async () => {
 
 const initTextPipeline = async () => {
   if (!textPipeline) {
-    const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0-alpha.12');
+    const { pipeline } = await import('@huggingface/transformers');
     
     textPipeline = await pipeline(
       'text-generation',
@@ -81,7 +81,7 @@ const initTextPipeline = async () => {
 
 const initTTSPipeline = async () => {
   if (!ttsPipeline) {
-    const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0-alpha.12');
+    const { pipeline } = await import('@huggingface/transformers');
     
     ttsPipeline = await pipeline(
       'text-to-speech',
@@ -111,8 +111,8 @@ const handleEmbed = async (taskId: string, payload: { images: ImageBitmap[] }) =
         normalize: true,
       });
       
-      // Extract embedding vector
-      const embedding = Array.from(result.data);
+      // Extract embedding vector - result.data is a TypedArray
+      const embedding = Array.from(result.data as Float32Array | Float64Array);
       embeddings.push(embedding);
       
       // Report progress

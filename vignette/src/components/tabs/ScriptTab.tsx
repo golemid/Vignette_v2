@@ -37,23 +37,17 @@ export const ScriptTab: React.FC = () => {
         result = generateFallbackEDL(groups);
       }
       
-      // Update store with generated clips
-      const { set } = useProjectStore.getState();
-      if (set) {
-        set((s: any) => {
-          s.edlClips = result.clips;
-        });
-      }
+      // Update store with generated clips using the store action
+      result.clips.forEach((clip: any) => {
+        updateEDLClip(clip.id, clip);
+      });
     } catch (error: any) {
       console.error('EDL generation failed:', error);
       // Fallback
       const fallbackResult = generateFallbackEDL(groups);
-      const { set } = useProjectStore.getState();
-      if (set) {
-        set((s: any) => {
-          s.edlClips = fallbackResult.clips;
-        });
-      }
+      fallbackResult.clips.forEach((clip: any) => {
+        updateEDLClip(clip.id, clip);
+      });
     }
   };
   

@@ -6,7 +6,7 @@
  */
 
 import * as idb from '../utils/idb';
-import { MODEL_MANIFEST, type ModelEntry } from './modelManifest';
+import { MODEL_MANIFEST, type ModelEntry, MANIFEST_VERSION } from './modelManifest';
 
 export interface LibraryStatus {
   folderFound: boolean;
@@ -296,8 +296,9 @@ export const replaceFile = async (
   // Delete existing file if present
   await deleteFile(directoryHandle, fileName);
   
-  // Write new file
-  const writable = await directoryHandle.createWritable();
+  // Get file handle and create writable stream
+  const fileHandle = await directoryHandle.getFileHandle(fileName, { create: true });
+  const writable = await fileHandle.createWritable();
   await writable.write(blob);
   await writable.close();
 };

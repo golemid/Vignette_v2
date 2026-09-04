@@ -9,7 +9,7 @@
  */
 
 import * as idb from '../utils/idb';
-import { type ModelEntry, getModelById } from './modelManifest';
+import { type ModelEntry, getModelById, MANIFEST_VERSION } from './modelManifest';
 import { deleteFile, replaceFile, computeSha256 } from './libraryManager';
 
 export interface DownloadProgress {
@@ -45,7 +45,7 @@ const downloadQueue: Array<{
   expectedSha256: string;
   directoryHandle: FileSystemDirectoryHandle;
   onProgress?: ProgressCallback;
-}>[] = [];
+}> = [];
 
 let processingQueue = false;
 
@@ -60,7 +60,7 @@ const downloadFile = async (
   expectedSha256: string,
   directoryHandle: FileSystemDirectoryHandle,
   onProgress?: ProgressCallback,
-  signal?: AbortSignal
+  _signal?: AbortSignal
 ): Promise<void> => {
   const progressKey = `${modelId}:${fileName}`;
   
@@ -73,7 +73,7 @@ const downloadFile = async (
   }
   
   const controller = new AbortController();
-  const combinedSignal = signal ? AbortSignal.any([controller.signal, signal]) : controller.signal;
+  const combinedSignal = _signal ? AbortSignal.any([controller.signal, _signal]) : controller.signal;
   
   const download: ActiveDownload = {
     modelId,
@@ -92,7 +92,7 @@ const downloadFile = async (
       headers['Range'] = `bytes=${startByte}-`;
     }
     
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       headers,
       signal: combinedSignal,
     });
@@ -120,7 +120,7 @@ const downloadFile = async (
     }
     
     const reader = response.body.getReader();
-    const chunks: Uint8Array[] = [];
+    const chunks: Uint8Array<ArrayBuffer>[] = [];
     let bytesDownloaded = startByte;
     let lastProgressUpdate = Date.now();
     
@@ -212,7 +212,7 @@ const downloadFile = async (
         expectedSha256,
         directoryHandle,
         onProgress,
-        signal
+        _signal
       );
     }
     
@@ -295,8 +295,7 @@ const processQueue = async (): Promise<void> => {
 export const downloadModel = async (
   modelId: string,
   directoryHandle: FileSystemDirectoryHandle,
-  onProgress?: ProgressCallback,
-  signal?: AbortSignal
+  onProgress?: ProgressCallback
 ): Promise<void> => {
   const model = getModelById(modelId);
   if (!model) {
@@ -321,7 +320,7 @@ export const downloadModel = async (
       expectedSize: file.sizeBytes,
       expectedSha256: file.sha256,
       directoryHandle,
-      onProgress: (progress) => {
+      onProgress: (progress: DownloadProgress) => {
         // Aggregate progress for the whole model
         const totalModelBytes = model.files.reduce((sum, f) => sum + f.sizeBytes, 0);
         const aggregatedProgress: DownloadProgress = {
