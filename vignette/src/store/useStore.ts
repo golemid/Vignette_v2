@@ -218,8 +218,8 @@ interface ProjectActions {
   // Pipeline actions
   setPipelineProgress: (progress: PipelineProgress) => void;
   // Undo/Redo actions (provided by zundo temporal middleware)
-  undo: () => void;
-  redo: () => void;
+  undo?: () => void;
+  redo?: () => void;
 }
 
 const activeObjectUrls: Set<string> = new Set();

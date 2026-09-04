@@ -1,8 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useProjectStore } from '../../store/useStore';
-import { Wand2, Clock, Type, Check, Edit3, AlertCircle } from 'lucide-react';
+import { Wand2, Clock, Type, Check, Edit3, AlertCircle, GripVertical, Trash2 } from 'lucide-react';
 import { generateEDL as generateRealEDL, generateFallbackEDL } from '../../ai/services/textService';
 import './ScriptTab.css';
+
+interface DragState {
+  isDragging: boolean;
+  clipId: string | null;
+  edge: 'left' | 'right' | 'move' | null;
+  startX: number;
+  originalDuration: number;
+  originalStartTime: number;
+}
 
 export const ScriptTab: React.FC = () => {
   const { 
@@ -22,6 +31,15 @@ export const ScriptTab: React.FC = () => {
   
   const [editingClip, setEditingClip] = useState<string | null>(null);
   const [localDuration, setLocalDuration] = useState<number>(0);
+  const [dragState, setDragState] = useState<DragState>({
+    isDragging: false,
+    clipId: null,
+    edge: null,
+    startX: 0,
+    originalDuration: 0,
+    originalStartTime: 0,
+  });
+  const timelineRef = useRef<HTMLDivElement>(null);
   
   const handleGenerateEDL = async () => {
     if (groups.length === 0) return;
@@ -65,6 +83,130 @@ export const ScriptTab: React.FC = () => {
   const handleSaveClipEdit = (clipId: string) => {
     updateEDLClip(clipId, { duration: localDuration });
     setEditingClip(null);
+  };
+  
+  // Interactive timeline handlers
+  const handleTrimStart = (e: React.MouseEvent, clipId: string) => {
+    e.preventDefault();
+    const clip = edlClips.find(c => c.id === clipId);
+    if (!clip) return;
+    
+    setDragState({
+      isDragging: true,
+      clipId,
+      edge: 'left',
+      startX: e.clientX,
+      originalDuration: clip.duration,
+      originalStartTime: clip.startTime,
+    });
+  };
+  
+  const handleTrimEnd = (e: React.MouseEvent, clipId: string) => {
+    e.preventDefault();
+    const clip = edlClips.find(c => c.id === clipId);
+    if (!clip) return;
+    
+    setDragState({
+      isDragging: true,
+      clipId,
+      edge: 'right',
+      startX: e.clientX,
+      originalDuration: clip.duration,
+      originalStartTime: clip.startTime,
+    });
+  };
+  
+  const handleMoveClip = (e: React.MouseEvent, clipId: string) => {
+    e.preventDefault();
+    const clip = edlClips.find(c => c.id === clipId);
+    if (!clip) return;
+    
+    setDragState({
+      isDragging: true,
+      clipId,
+      edge: 'move',
+      startX: e.clientX,
+      originalDuration: clip.duration,
+      originalStartTime: clip.startTime,
+    });
+  };
+  
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!dragState.isDragging || !dragState.clipId) return;
+    
+    const deltaX = e.clientX - dragState.startX;
+    const pixelsPerSecond = 100; // Adjust based on timeline width
+    const deltaSeconds = deltaX / pixelsPerSecond;
+    
+    const clip = edlClips.find(c => c.id === dragState.clipId);
+    if (!clip) return;
+    
+    if (dragState.edge === 'left') {
+      // Trim start: adjust startTime and duration
+      const newStartTime = Math.max(0, dragState.originalStartTime + deltaSeconds);
+      const maxStartTime = dragState.originalStartTime + dragState.originalDuration - 0.5;
+      const clampedStartTime = Math.min(newStartTime, maxStartTime);
+      const newDuration = dragState.originalDuration - (clampedStartTime - dragState.originalStartTime);
+      
+      updateEDLClip(dragState.clipId, {
+        startTime: clampedStartTime,
+        duration: newDuration,
+      });
+    } else if (dragState.edge === 'right') {
+      // Trim end: adjust duration only
+      const newDuration = Math.max(0.5, dragState.originalDuration + deltaSeconds);
+      updateEDLClip(dragState.clipId, { duration: newDuration });
+    } else if (dragState.edge === 'move') {
+      // Move clip: reorder by adjusting startTime relative to other clips
+      // For simplicity, we'll just shift the start time
+      const newStartTime = Math.max(0, dragState.originalStartTime + deltaSeconds);
+      updateEDLClip(dragState.clipId, { startTime: newStartTime });
+    }
+  };
+  
+  const handleMouseUp = () => {
+    if (dragState.isDragging) {
+      setDragState({
+        isDragging: false,
+        clipId: null,
+        edge: null,
+        startX: 0,
+        originalDuration: 0,
+        originalStartTime: 0,
+      });
+    }
+  };
+  
+  // Attach global mouse handlers for drag operations
+  React.useEffect(() => {
+    if (dragState.isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [dragState.isDragging, dragState.clipId, dragState.edge]);
+  
+  // Typography editor handlers
+  const handleTypographyChange = (clipId: string, text: string, position: string) => {
+    const clip = edlClips.find(c => c.id === clipId);
+    if (!clip) return;
+    
+    const positionMap: Record<string, { x: number; y: number }> = {
+      top: { x: 50, y: 10 },
+      bottom: { x: 50, y: 90 },
+      center: { x: 50, y: 50 },
+    };
+    
+    updateEDLClip(clipId, {
+      typography: {
+        text,
+        position: positionMap[position] || { x: 50, y: 50 },
+        duration: clip.duration,
+      },
+    });
   };
   
   const totalDuration = edlClips.reduce((sum, clip) => sum + clip.duration, 0);
