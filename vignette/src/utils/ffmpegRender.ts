@@ -14,29 +14,33 @@ interface RenderSettings {
 }
 
 /**
- * Check if SharedArrayBuffer is available (COOP/COEP enabled)
- */
-const hasSharedArrayBuffer = (): boolean => {
-  return typeof SharedArrayBuffer !== 'undefined';
-};
-
-/**
- * Get or create the FFmpeg instance with CDN-loaded core
+ * Get or create the FFmpeg instance with CDN-loaded core.
+ * Uses multi-threaded core if SharedArrayBuffer is available (COOP/COEP enabled).
  */
 const getFFmpeg = async (): Promise<FFmpeg> => {
   if (!ffmpegInstance) {
     ffmpegInstance = new FFmpeg();
-    
-    // Load FFmpeg core from CDN
-    await ffmpegInstance.load({
-      coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js',
-      wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm',
-    });
-    
-    console.log('FFmpeg core loaded successfully');
-    console.log(`SharedArrayBuffer available: ${hasSharedArrayBuffer()} - ${hasSharedArrayBuffer() ? 'Multi-threaded WASM enabled' : 'Single-threaded WASM only'}`);
+
+    const hasSharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined';
+
+    // Load multi-threaded core if SharedArrayBuffer is available (COOP/COEP enabled)
+    if (hasSharedArrayBuffer) {
+      await ffmpegInstance.load({
+        coreURL: 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm/ffmpeg-core.js',
+        wasmURL: 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm/ffmpeg-core.wasm',
+      });
+      console.log('FFmpeg multi-threaded core loaded (SharedArrayBuffer available)');
+    } else {
+      await ffmpegInstance.load({
+        coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js',
+        wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm',
+      });
+      console.log('FFmpeg single-threaded core loaded (SharedArrayBuffer NOT available)');
+    }
+
+    console.log(`WASM Threading: ${hasSharedArrayBuffer ? 'Multi-threaded' : 'Single-threaded'}`);
   }
-  
+
   return ffmpegInstance;
 };
 
@@ -194,7 +198,7 @@ export const renderFullEDL = async (
     
     console.log(`Rendering ${validClips.length} valid clips`);
     console.log(`Settings: ${settings.resolution}@${settings.frameRate}fps, codec=${settings.codec}`);
-    console.log(`SharedArrayBuffer: ${hasSharedArrayBuffer() ? 'enabled (multi-threaded)' : 'disabled (single-threaded)'}`);
+    console.log(`WASM Threading: ${typeof SharedArrayBuffer !== 'undefined' ? 'Multi-threaded' : 'Single-threaded'}`);
     
     // Resolve target resolution (default to 16:9 for now, can be extended)
     const targetRes = resolveResolution(settings.resolution, '16:9');
@@ -411,24 +415,29 @@ export const renderFullEDL = async (
     console.error('FFmpeg render error:', error);
     throw new Error(`Video render failed: ${error.message}`);
   } finally {
-    // Cleanup all intermediate files
-    for (const filename of cleanupFiles) {
+    // Cleanup all intermediate files from WASM FS
+    const ffmpeg = ffmpegInstance;
+    if (ffmpeg) {
+      for (const filename of cleanupFiles) {
+        try {
+          await ffmpeg.deleteFile(filename);
+          console.log(`Deleted FFmpeg FS file: ${filename}`);
+        } catch (e) {
+          console.warn(`Failed to delete ${filename}:`, e);
+        }
+      }
+      
+      // Also delete output file if it exists
       try {
-        await ffmpegInstance?.deleteFile(filename);
+        await ffmpeg.deleteFile('output.mp4');
       } catch (e) {
-        console.warn(`Failed to delete ${filename}:`, e);
+        // Output file may not exist if render failed
       }
     }
-    
+
     // Reset FFmpeg instance for next render
-    if (ffmpegInstance) {
-      try {
-        // Note: @ffmpeg/ffmpeg v0.12.x doesn't have reset(), so we just nullify the instance
-        ffmpegInstance = null;
-      } catch (e) {
-        console.warn('Failed to reset FFmpeg:', e);
-      }
-    }
+    ffmpegInstance = null;
+    console.log('FFmpeg instance cleaned up');
   }
 };
 
@@ -479,7 +488,7 @@ export const resetFFmpeg = (): void => {
  * Check WASM threading capability
  */
 export const checkWasmCapabilities = (): { sharedArrayBuffer: boolean; multiThreaded: boolean } => {
-  const sab = hasSharedArrayBuffer();
+  const sab = typeof SharedArrayBuffer !== 'undefined';
   return {
     sharedArrayBuffer: sab,
     multiThreaded: sab

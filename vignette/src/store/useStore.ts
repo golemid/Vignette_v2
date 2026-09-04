@@ -1,8 +1,24 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import { temporal } from 'zundo';
 
 export type AspectRatio = '9:16' | '16:9';
 export type ExecutionMode = 'auto-pilot' | 'step-by-step';
+export type PipelineStage = 
+  | 'idle'
+  | 'grouping'
+  | 'writing-edl'
+  | 'generating-narration'
+  | 'synthesizing-tts'
+  | 'complete'
+  | 'error';
+
+export interface PipelineProgress {
+  stage: PipelineStage;
+  percent: number;
+  message: string;
+  error?: string;
+}
 
 export interface MediaFile {
   id: string;
@@ -99,6 +115,8 @@ export interface ProjectState {
   aiStatus: 'not-installed' | 'installing' | 'ready' | 'skipped' | 'error';
   aiManifestVersion: string | null;
   aiModelProgress: Record<string, { percent: number; status: string; error?: string }>;
+  // Pipeline progress state (not tracked in undo/redo)
+  pipelineProgress: PipelineProgress;
 }
 
 const defaultVoicePersonas: VoicePersona[] = [
@@ -154,6 +172,7 @@ const initialState: ProjectState = {
   aiStatus: 'not-installed',
   aiManifestVersion: null,
   aiModelProgress: {},
+  pipelineProgress: { stage: 'idle', percent: 0, message: 'Idle' },
 };
 
 interface ProjectActions {
@@ -196,6 +215,11 @@ interface ProjectActions {
   setAIStatus: (status: ProjectState['aiStatus']) => void;
   setAIManifestVersion: (version: string) => void;
   updateAIModelProgress: (modelId: string, progress: { percent: number; status: string; error?: string }) => void;
+  // Pipeline actions
+  setPipelineProgress: (progress: PipelineProgress) => void;
+  // Undo/Redo actions (provided by zundo temporal middleware)
+  undo: () => void;
+  redo: () => void;
 }
 
 const activeObjectUrls: Set<string> = new Set();
@@ -232,62 +256,89 @@ const _cascadeInvalidation = (set: (fn: (s: ProjectState) => void) => void, _get
   }
 };
 
+// Fields that should be tracked in undo/redo history (creative actions only)
+const TEMPORAL_OPTIONS = {
+  partialize: (state: ProjectState & ProjectActions) => ({
+    // Only track creative modifications, NOT async AI results or file operations
+    groups: state.groups,
+    edlClips: state.edlClips,
+    narrationText: state.narrationText,
+    audioTracks: state.audioTracks,
+    duckingEnabled: state.duckingEnabled,
+    duckingDepth: state.duckingDepth,
+    aspectRatio: state.aspectRatio,
+    visualStylePreset: state.visualStylePreset,
+    scriptKeywords: state.scriptKeywords,
+    thematicScript: state.thematicScript,
+    selectedVoice: state.selectedVoice,
+  }),
+};
+
 export const useProjectStore = create<ProjectState & ProjectActions>()(
-  immer((set) => ({
-    ...initialState,
-    
-    initializeFromDB: async () => {},
-    addMediaFiles: async () => {},
-    removeMediaFile: () => {},
-    setAspectRatio: () => {},
-    generateGroups: async () => {},
-    updateGroup: () => {},
-    mergeGroups: () => {},
-    splitGroup: () => {},
-    removeGroup: () => {},
-    moveImageBetweenGroups: () => {},
-    setVisualStylePreset: () => {},
-    generateEDL: async () => {},
-    updateEDLClip: () => {},
-    setScriptKeywords: () => {},
-    approveScript: () => {},
-    generateNarration: async () => {},
-    updateNarrationText: () => {},
-    selectVoice: () => {},
-    addAudioTrack: () => {},
-    updateAudioTrack: () => {},
-    removeAudioTrack: () => {},
-    setDucking: () => {},
-    previewAudio: () => {},
-    stopAudio: () => {},
-    generatePreview: async () => {},
-    setPreviewSettings: () => {},
-    validateProject: () => [],
-    saveProject: async () => {},
-    loadProject: async () => {},
-    setExecutionMode: () => {},
-    setProjectName: () => {},
-    setCurrentTab: () => {},
-    setLoading: () => {},
-    addValidationError: () => {},
-    clearValidationErrors: () => {},
-    // AI actions
-    setAIStatus: (status) => {
-      set((s) => {
-        s.aiStatus = status;
-      });
-    },
-    setAIManifestVersion: (version) => {
-      set((s) => {
-        s.aiManifestVersion = version;
-      });
-    },
-    updateAIModelProgress: (modelId, progress) => {
-      set((s) => {
-        s.aiModelProgress[modelId] = progress;
-      });
-    },
-  }))
+  temporal(
+    immer((set) => ({
+      ...initialState,
+      
+      initializeFromDB: async () => {},
+      addMediaFiles: async () => {},
+      removeMediaFile: () => {},
+      setAspectRatio: () => {},
+      generateGroups: async () => {},
+      updateGroup: () => {},
+      mergeGroups: () => {},
+      splitGroup: () => {},
+      removeGroup: () => {},
+      moveImageBetweenGroups: () => {},
+      setVisualStylePreset: () => {},
+      generateEDL: async () => {},
+      updateEDLClip: () => {},
+      setScriptKeywords: () => {},
+      approveScript: () => {},
+      generateNarration: async () => {},
+      updateNarrationText: () => {},
+      selectVoice: () => {},
+      addAudioTrack: () => {},
+      updateAudioTrack: () => {},
+      removeAudioTrack: () => {},
+      setDucking: () => {},
+      previewAudio: () => {},
+      stopAudio: () => {},
+      generatePreview: async () => {},
+      setPreviewSettings: () => {},
+      validateProject: () => [],
+      saveProject: async () => {},
+      loadProject: async () => {},
+      setExecutionMode: () => {},
+      setProjectName: () => {},
+      setCurrentTab: () => {},
+      setLoading: () => {},
+      addValidationError: () => {},
+      clearValidationErrors: () => {},
+      // AI actions (not tracked in undo/redo)
+      setAIStatus: (status) => {
+        set((s) => {
+          s.aiStatus = status;
+        });
+      },
+      setAIManifestVersion: (version) => {
+        set((s) => {
+          s.aiManifestVersion = version;
+        });
+      },
+      updateAIModelProgress: (modelId, progress) => {
+        set((s) => {
+          s.aiModelProgress[modelId] = progress;
+        });
+      },
+      // Pipeline actions (not tracked in undo/redo)
+      setPipelineProgress: (progress) => {
+        set((s) => {
+          s.pipelineProgress = progress;
+        });
+      },
+    })),
+    TEMPORAL_OPTIONS
+  )
 );
 
 async function _generateProxyBlob(file: File): Promise<Blob> {
