@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Terminal as TerminalIcon, Copy, Trash2, AlertCircle, Info, AlertTriangle, XCircle } from 'lucide-react';
 import './TerminalTab.css';
 
@@ -108,7 +108,7 @@ export function TerminalTab() {
     window.fetch = async (...args) => {
       const request: NetworkRequest = {
         id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        url: typeof args[0] === 'string' ? args[0] : args[0].url,
+        url: typeof args[0] === 'string' ? args[0] : args[0] instanceof URL ? args[0].toString() : (args[0] as Request).url,
         method: args[1]?.method || 'GET',
         timestamp: new Date(),
       };

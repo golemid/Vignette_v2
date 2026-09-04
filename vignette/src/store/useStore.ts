@@ -471,7 +471,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>()(
       const clips = get().edlClips;
       let narration = '';
       
-      clips.forEach((clip, index) => {
+      clips.forEach((_clip, index) => {
         const sceneText = `\n[Scene ${index + 1}] The story unfolds...`;
         narration += sceneText;
       });
@@ -642,7 +642,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>()(
       aspectRatio: state.aspectRatio,
       visualStylePreset: state.visualStylePreset,
     }),
-    onRehydrateStorage: () => (state, error) => {
+    onRehydrateStorage: () => (_state, error) => {
       if (error) {
         console.error('Failed to rehydrate vignette-storage:', error);
       } else {

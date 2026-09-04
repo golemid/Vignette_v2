@@ -1,4 +1,3 @@
-import React from 'react';
 import { useProjectStore } from './store/useStore';
 import { CatalogTab } from './components/tabs/CatalogTab';
 import { GroupsTab } from './components/tabs/GroupsTab';
