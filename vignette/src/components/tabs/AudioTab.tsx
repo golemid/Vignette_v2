@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useProjectStore, getHighQualityVoices, defaultVoicePersonas } from '../../store/useStore';
-import { Mic, Music, Volume2, Waves, Play, Pause, Settings, AlertCircle } from 'lucide-react';
+import { Mic, Music, Volume2, Waves, Play, Pause, Settings } from 'lucide-react';
 import { generateNarration as generateRealNarration, generateFallbackNarration } from '../../ai/services/textService';
 import { synthesizeSpeech, getTTSPersonas } from '../../ai/services/ttsService';
 import './AudioTab.css';
@@ -148,16 +148,56 @@ export const AudioTab: React.FC = () => {
           </button>
         </div>
         
-        <textarea
-          value={narrationText}
-          onChange={(e) => updateNarrationText(e.target.value)}
-          placeholder="Enter or edit narration text here... Use [pause] for pause tokens."
-          className="narration-editor"
-          rows={8}
-        />
+        <div className="narration-editor-wrapper" style={{ position: 'relative' }}>
+          <textarea
+            value={narrationText}
+            onChange={(e) => updateNarrationText(e.target.value)}
+            placeholder="Enter or edit narration text here... Use [PAUSE 1.5s] for pauses."
+            className="narration-editor"
+            rows={8}
+            style={{ width: '100%', fontFamily: 'monospace', fontSize: '0.95rem' }}
+          />
+          <button
+            className="action-btn small"
+            onClick={() => {
+              const textarea = document.querySelector('.narration-editor') as HTMLTextAreaElement;
+              if (textarea) {
+                const pos = textarea.selectionStart;
+                const before = narrationText.slice(0, pos);
+                const after = narrationText.slice(pos);
+                updateNarrationText(before + '[PAUSE 1.0s]' + after);
+                // Set cursor after inserted token
+                setTimeout(() => {
+                  textarea.focus();
+                  textarea.setSelectionRange(pos + 13, pos + 13);
+                }, 0);
+              }
+            }}
+            style={{
+              position: 'absolute',
+              top: '0.5rem',
+              right: '0.5rem',
+              padding: '0.25rem 0.5rem',
+              fontSize: '0.75rem',
+              background: 'var(--accent)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+            title="Insert a 1-second pause token at cursor position"
+          >
+            Insert Pause
+          </button>
+        </div>
         
         <div className="narration-hints">
-          <p>💡 Tip: Use <code>[pause]</code> or <code>[...]</code> to insert pause tokens for timing</p>
+          <p>💡 Tip: Use <code>[PAUSE 1.5s]</code> to insert timed pauses. Click "Insert Pause" button to add at cursor.</p>
+          {narrationText.includes('[PAUSE') && (
+            <p style={{ color: '#81c784', fontSize: '0.85rem' }}>
+              ✓ Pause tokens detected - silence will be synthesized between speech segments
+            </p>
+          )}
         </div>
       </section>
       
